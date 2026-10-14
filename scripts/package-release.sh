@@ -23,7 +23,7 @@ from pathlib import Path
 import sys,zipfile
 version=sys.argv[1]
 roots=[Path('native'),Path('docs'),Path('scripts')]
-files=[Path('README.md'),Path('THIRD_PARTY_NOTICES.md'),Path('.gitignore'),Path('Design.pen')]
+files=[Path('LICENSE'),Path('README.md'),Path('THIRD_PARTY_NOTICES.md'),Path('.gitignore'),Path('Design.pen')]
 for root in roots:
  for p in root.rglob('*'):
   if p.is_file() and not any(part in {'build','build-perf','build-v2','WebMRuntimeBuild','xcuserdata','__pycache__'} for part in p.parts) and p.name != '.DS_Store':

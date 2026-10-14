@@ -53,4 +53,10 @@ bash scripts/test-workspace.sh
 | `outputs/` | 本机最新版交付文件，不进入 Git |
 | `Design.pen`、`docs/design/` | 可编辑 UI 与音频场景设计参考 |
 
-完整安装包通过 GitHub Releases 提供，避免将重复构建产物写入 Git 历史。第三方组件的版权、许可证和来源记录见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。仓库暂未为项目自身指定统一开源许可证。
+完整安装包通过 GitHub Releases 提供，避免将重复构建产物写入 Git 历史。
+
+## License / 许可证
+
+LumaScore 自有源码、文档和原创设计资源采用 [MIT License](LICENSE)，Copyright (c) 2026 Hyperk1ler。允许使用、修改、商用和再发布，须保留版权及许可证声明。
+
+第三方组件不被重新授权为 MIT，仍遵循各自许可证。内置 FFmpeg 编码器使用 GPL-3.0-or-later；其依赖另有 GPL、LGPL、BSD 和 Apache 等协议。组件的版权、许可证和来源记录见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
