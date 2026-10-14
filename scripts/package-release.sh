@@ -8,6 +8,7 @@ if [[ ! -d "$task_product" ]]; then
   echo 'Build first: ./native/build.sh' >&2
   exit 1
 fi
+python3 native/Tools/package-webm-source.py --output "outputs/LumaScore-v${task_version}-WebMRuntime-source.zip"
 codesign --verify --deep --strict "$task_product"
 mkdir -p outputs
 rm -rf outputs/LumaScore.app
@@ -32,5 +33,5 @@ with zipfile.ZipFile(f'outputs/LumaScore-v{version}-source.zip','w',zipfile.ZIP_
  for p in sorted(files):
   archive.write(p,Path(f'LumaScore-{version}')/p)
 PY
-(cd outputs && shasum -a 256 "LumaScore-v${task_version}-macOS.zip" "LumaScore-v${task_version}-source.zip" > SHA256SUMS.txt)
+(cd outputs && shasum -a 256 "LumaScore-v${task_version}-macOS.zip" "LumaScore-v${task_version}-source.zip" "LumaScore-v${task_version}-WebMRuntime-source.zip" > SHA256SUMS.txt)
 echo "Packaged LumaScore ${task_version} in outputs/"

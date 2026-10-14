@@ -8,6 +8,8 @@
 **/WebMRuntimeBuild/
 **/DerivedData/
 **/ModuleCache/
+**/__pycache__/
+*.py[cod]
 **/xcuserdata/
 *.xcuserstate
 *.app/

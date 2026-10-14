@@ -27,6 +27,31 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def resolve_dependency(reference, source, prefix):
+    resolved = reference.replace("@@HOMEBREW_PREFIX@@/opt/ffmpeg", str(prefix))
+    resolved = resolved.replace("@@HOMEBREW_PREFIX@@", "/opt/homebrew")
+    resolved = resolved.replace("@@HOMEBREW_CELLAR@@/ffmpeg/" + prefix.name, str(prefix))
+    resolved = resolved.replace("@@HOMEBREW_CELLAR@@", "/opt/homebrew/Cellar")
+    if resolved.startswith("@loader_path/"):
+        resolved = str(source.parent / resolved.removeprefix("@loader_path/"))
+    elif resolved.startswith("@executable_path/"):
+        resolved = str(prefix / "bin" / resolved.removeprefix("@executable_path/"))
+    path = Path(resolved)
+    if path.is_absolute() and path.is_file():
+        return path.resolve()
+    # An isolated source rebuild may retain a bare SONAME or @rpath ID.
+    # Search only this explicit Cellar tree, requiring one exact-name match.
+    if "/Cellar/" in str(prefix) and (resolved.startswith("@rpath/") or "/" not in resolved):
+        name = Path(resolved).name
+        cellar = prefix.parents[1]
+        candidates = {(folder / name).resolve() for folder in cellar.glob("*/*/lib") if (folder / name).is_file()}
+        if len(candidates) == 1:
+            return candidates.pop()
+        if len(candidates) > 1:
+            raise RuntimeError("Ambiguous ABI dependency: " + reference)
+    raise RuntimeError("ABI-matching dependency missing: " + reference)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ffmpeg-prefix", type=Path, required=True)
@@ -62,13 +87,7 @@ def main():
         for reference in dependencies(source):
             if reference.startswith(("/usr/lib/", "/System/Library/")):
                 continue
-            resolved = reference.replace("@@HOMEBREW_PREFIX@@/opt/ffmpeg", str(prefix))
-            resolved = resolved.replace("@@HOMEBREW_PREFIX@@", "/opt/homebrew")
-            resolved = resolved.replace("@@HOMEBREW_CELLAR@@/ffmpeg/" + prefix.name, str(prefix))
-            resolved = resolved.replace("@@HOMEBREW_CELLAR@@", "/opt/homebrew/Cellar")
-            child = Path(resolved).resolve()
-            if not child.is_file():
-                raise RuntimeError("ABI-matching dependency missing: " + reference)
+            child = resolve_dependency(reference, source, prefix)
             relative = "@loader_path/" + ("" if is_library else "lib/") + child.name
             subprocess.check_call(["/usr/bin/install_name_tool", "-change", reference, relative, str(target)])
             if child.name != source.name:
@@ -105,13 +124,16 @@ def main():
             text = formula.read_text()
             url = re.search(r'^\s*url "([^"]+)"', text, re.M)
             checksum = re.search(r'^\s*sha256 "([^"]+)"', text, re.M)
-            license_line = re.search(r'^\s*license (.+)$', text, re.M)
+            license_line = re.search(r'^\s*license (all_of:\s*\[[^\]]*\]|"[^"]+")', text, re.M)
+            revision = re.search(r'\brevision:\s*"([0-9a-f]{40})"', text)
             if url:
                 report["sourceURL"] = url.group(1)
             if checksum:
                 report["sourceSHA256"] = checksum.group(1)
             if license_line:
                 report["license"] = license_line.group(1)
+            if revision:
+                report["sourceRevision"] = revision.group(1)
         if not copied_license:
             raise RuntimeError("License text missing for " + str(package))
         reports.append(report)

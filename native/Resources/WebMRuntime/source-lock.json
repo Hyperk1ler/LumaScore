@@ -1,0 +1,160 @@
+{
+  "schema": 1,
+  "packages": [
+    {
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "sourceURL": "https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz",
+      "sourceSHA256": "8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e",
+      "license": "GPL-3.0-or-later",
+      "formula": "Licenses/ffmpeg-9.0.2/homebrew-formula.rb",
+      "binaries": [
+        "ffmpeg",
+        "ffprobe",
+        "libavdevice.63.1.102.dylib",
+        "libavfilter.12.1.102.dylib",
+        "libavformat.63.1.102.dylib",
+        "libavcodec.63.1.102.dylib",
+        "libswresample.7.1.102.dylib",
+        "libswscale.10.1.102.dylib",
+        "libavutil.61.1.102.dylib"
+      ]
+    },
+    {
+      "package": "dav1d",
+      "version": "1.5.3",
+      "sourceURL": "https://code.videolan.org/videolan/dav1d/-/archive/1.5.3/dav1d-1.5.3.tar.bz2",
+      "sourceSHA256": "e099f53253f6c247580c554d53a13f1040638f2066edc3c740e4c2f15174ce22",
+      "license": "BSD-2-Clause",
+      "formula": "Licenses/dav1d-1.5.3/homebrew-formula.rb",
+      "binaries": [
+        "libdav1d.7.dylib"
+      ]
+    },
+    {
+      "package": "lame",
+      "version": "3.100",
+      "sourceURL": "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz",
+      "sourceSHA256": "ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e",
+      "license": "LGPL-2.0-or-later",
+      "formula": "Licenses/lame-3.100/homebrew-formula.rb",
+      "binaries": [
+        "libmp3lame.0.dylib"
+      ]
+    },
+    {
+      "package": "libvmaf",
+      "version": "3.2.1",
+      "sourceURL": "https://github.com/Netflix/vmaf/archive/refs/tags/v3.2.1.tar.gz",
+      "sourceSHA256": "5df7386911bc15fd1ca783132528748d219768ae4fc5f8e0b61184f041648092",
+      "license": "BSD-2-Clause-Patent",
+      "formula": "Licenses/libvmaf-3.2.1/homebrew-formula.rb",
+      "binaries": [
+        "libvmaf.3.dylib"
+      ]
+    },
+    {
+      "package": "libvpx",
+      "version": "1.17.0",
+      "sourceURL": "https://github.com/webmproject/libvpx/archive/refs/tags/v1.17.0.tar.gz",
+      "sourceSHA256": "1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a",
+      "license": "BSD-3-Clause",
+      "formula": "Licenses/libvpx-1.17.0/homebrew-formula.rb",
+      "binaries": [
+        "libvpx.12.dylib"
+      ]
+    },
+    {
+      "package": "openssl@3",
+      "version": "3.6.5",
+      "sourceURL": "https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz",
+      "sourceSHA256": "a2157c2830efdec3788939b00c9b0638306d3f0bbb76dc4832ee503bb397df98",
+      "license": "Apache-2.0",
+      "formula": "Licenses/openssl@3-3.6.5/homebrew-formula.rb",
+      "binaries": [
+        "libssl.3.dylib",
+        "libcrypto.3.dylib"
+      ]
+    },
+    {
+      "package": "opus",
+      "version": "1.6.1",
+      "sourceURL": "https://ftp.osuosl.org/pub/xiph/releases/opus/opus-1.6.1.tar.gz",
+      "sourceSHA256": "6ffcb593207be92584df15b32466ed64bbec99109f007c82205f0194572411a1",
+      "license": "BSD-3-Clause",
+      "formula": "Licenses/opus-1.6.1/homebrew-formula.rb",
+      "binaries": [
+        "libopus.0.dylib"
+      ]
+    },
+    {
+      "package": "svt-av1",
+      "version": "4.1.0",
+      "sourceURL": "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v4.1.0/SVT-AV1-v4.1.0.tar.bz2",
+      "sourceSHA256": "184162d3db3a4448882b17230413b4938ca252eef6b3c5e2f1236b2fcf497881",
+      "license": "BSD-3-Clause",
+      "formula": "Licenses/svt-av1-4.1.0/homebrew-formula.rb",
+      "binaries": [
+        "libSvtAv1Enc.4.1.0.dylib"
+      ]
+    },
+    {
+      "package": "x264",
+      "version": "r3222",
+      "sourceURL": "https://code.videolan.org/videolan/x264/-/archive/b35605ace3ddf7c1a5d67a2eb553f034aef41d55/x264-b35605ace3ddf7c1a5d67a2eb553f034aef41d55.tar.bz2",
+      "license": "GPL-2.0-or-later",
+      "formula": "Licenses/x264-r3222/homebrew-formula.rb",
+      "revision": "b35605ace3ddf7c1a5d67a2eb553f034aef41d55",
+      "sourceSHA256": "6eeb82934e69fd51e043bd8c5b0d152839638d1ce7aa4eea65a3fedcf83ff224",
+      "archiveVerification": {
+        "revision": "b35605ace3ddf7c1a5d67a2eb553f034aef41d55",
+        "gitBlobComparisons": 270
+      },
+      "binaries": [
+        "libx264.165.dylib"
+      ]
+    },
+    {
+      "package": "x265",
+      "version": "4.3",
+      "sourceURL": "https://github.com/Multicorewareinc/x265/releases/download/4.3/x265_4.3.tar.gz",
+      "sourceSHA256": "83c53e4c8bbb8f1e33ed59e10a7d621d1d7801ca853910c3eb41f038b8ffb121",
+      "license": "GPL-2.0-or-later",
+      "formula": "Licenses/x265-4.3/homebrew-formula.rb",
+      "binaries": [
+        "libx265.217.dylib"
+      ]
+    },
+    {
+      "package": "xz",
+      "version": "5.8.4",
+      "sourceURL": "https://github.com/tukaani-project/xz/releases/download/v5.8.4/xz-5.8.4.tar.gz",
+      "sourceSHA256": "0014c7886930454fe8bd4228665b51af55eeae560ea135c9c4cd33f55b2591d9",
+      "license": "0BSD AND GPL-2.0-or-later (see upstream COPYING and per-file notices)",
+      "formula": "Licenses/xz-5.8.4/homebrew-formula.rb",
+      "binaries": [
+        "liblzma.5.dylib"
+      ]
+    },
+    {
+      "package": "sdl2-compat",
+      "version": "2.32.74",
+      "sourceURL": "https://github.com/libsdl-org/sdl2-compat/releases/download/release-2.32.74/sdl2-compat-2.32.74.tar.gz",
+      "sourceSHA256": "ec68abde77e2e459c8abc4f9587b8976b5d2a657b2bfda2fb3a079b0f8924588",
+      "license": "Zlib",
+      "formula": "BuildRecipes/sdl2-compat-2.32.74.rb",
+      "role": "build-only for original FFmpeg ffplay configuration; not shipped",
+      "binaries": []
+    },
+    {
+      "package": "sdl3",
+      "version": "3.4.18",
+      "sourceURL": "https://github.com/libsdl-org/SDL/releases/download/release-3.4.18/SDL3-3.4.18.tar.gz",
+      "sourceSHA256": "9c75cf16330322c217dedd2e0609f1124f1b54b8633e763467b4684d0f4334a3",
+      "license": "Zlib",
+      "formula": "BuildRecipes/sdl3-3.4.18.rb",
+      "role": "build-only for original FFmpeg ffplay configuration; not shipped",
+      "binaries": []
+    }
+  ]
+}

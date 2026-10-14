@@ -471,7 +471,8 @@
       "package": "x264",
       "version": "r3222",
       "sourceURL": "https://code.videolan.org/videolan/x264.git",
-      "license": "\"GPL-2.0-or-later\""
+      "license": "\"GPL-2.0-or-later\"",
+      "sourceRevision": "b35605ace3ddf7c1a5d67a2eb553f034aef41d55"
     },
     {
       "package": "x265",
@@ -485,7 +486,7 @@
       "version": "5.8.4",
       "sourceURL": "https://github.com/tukaani-project/xz/releases/download/v5.8.4/xz-5.8.4.tar.gz",
       "sourceSHA256": "0014c7886930454fe8bd4228665b51af55eeae560ea135c9c4cd33f55b2591d9",
-      "license": "all_of: ["
+      "license": "all_of: [\n    \"0BSD\",\n    \"GPL-2.0-or-later\",\n  ]"
     }
   ]
 }

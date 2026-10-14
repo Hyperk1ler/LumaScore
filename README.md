@@ -53,7 +53,7 @@ bash scripts/test-workspace.sh
 | `outputs/` | 本机最新版交付文件，不进入 Git |
 | `Design.pen`、`docs/design/` | 可编辑 UI 与音频场景设计参考 |
 
-完整安装包通过 GitHub Releases 提供，避免将重复构建产物写入 Git 历史。
+完整安装包通过 GitHub Releases 提供，避免将重复构建产物写入 Git 历史。内置编码器及依赖的[对应源码包](https://github.com/Hyperk1ler/LumaScore/releases/download/v2.6.0/LumaScore-v2.6.0-WebMRuntime-source.zip)也在同一 Release 免费提供；包含精确版本、补丁、构建配方及[重建说明](docs/webm-corresponding-source.md)。
 
 ## License / 许可证
 
