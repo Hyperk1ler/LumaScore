@@ -1,0 +1,29 @@
+{
+  "durationSeconds": 30,
+  "sampleRate": 48000,
+  "channels": 2,
+  "pcmBits": 16,
+  "midiFormat": 1,
+  "ppq": 480,
+  "bpm": 120,
+  "visualTracks": 16,
+  "notesPerTrack": 240,
+  "totalNotes": 3840,
+  "noteIntervalSeconds": 0.125,
+  "noteDurationSeconds": 0.1,
+  "pitchRange": [
+    36,
+    83
+  ],
+  "algorithm": "Deterministic per-track arithmetic pitch/velocity sequence, no randomness; stereo 220/330 Hz tone",
+  "files": {
+    "representative-30s.wav": {
+      "bytes": 5760044,
+      "sha256": "fe9db32036afe08a6dc605b578b6f35ee9aa42bbeb43490bc7792959cf7056a3"
+    },
+    "representative-30s.mid": {
+      "bytes": 31139,
+      "sha256": "5c23804d9654ad10b73a115a7616b20c7e569b4df0407d6f6580458e64612aad"
+    }
+  }
+}

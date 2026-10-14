@@ -1,0 +1,63 @@
+// !$*UTF8*$!
+{archiveVersion=1;classes={};objectVersion=56;objects={
+D41CE3E76F43793474E82DAF = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasShortcuts.swift; sourceTree = "<group>"; };
+CB8A28B3DAEDF82FF8D3984B = {isa=PBXBuildFile;fileRef=D41CE3E76F43793474E82DAF;};
+
+F89AC4D7E2167AD12308B77E = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FontCatalog.swift; sourceTree = "<group>"; };
+3D3C7FBDBA4EEE1A13F5D7A2 = {isa=PBXBuildFile;fileRef=F89AC4D7E2167AD12308B77E;};
+
+117BAF963115A4BA72CB8AAC = {isa=PBXFileReference;lastKnownFileType=folder;path="Resources/WebMRuntime";sourceTree="<group>";};
+EAD6B899F594B854420A205F = {isa=PBXBuildFile;fileRef=117BAF963115A4BA72CB8AAC;};
+
+
+6DEC2E37D0DDAE05084839AD = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebMTranscoder.swift; sourceTree = "<group>"; };
+902FBD3690D044886D213FBC = { isa = PBXBuildFile; fileRef = 6DEC2E37D0DDAE05084839AD; };
+
+4AB430A88A6DCA8A4F908198 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioControls.swift; sourceTree = "<group>"; };
+5B5E593CD14958B7AD26B4D1 = { isa = PBXBuildFile; fileRef = 4AB430A88A6DCA8A4F908198; };
+
+E01E158A1250169D0DE90BC9 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RendererScenes.swift; sourceTree = "<group>"; };
+981F5CE8E4A627B6C819A041 = { isa = PBXBuildFile; fileRef = E01E158A1250169D0DE90BC9; };
+
+897F7D27F29B98805EA2266A = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetLibrary.swift; sourceTree = "<group>"; };
+8DAC1E7697FA0F06EFF1B6D6 = { isa = PBXBuildFile; fileRef = 897F7D27F29B98805EA2266A; };
+
+5A86BE470CA12180C085BC03 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChordAnalysis.swift; sourceTree = "<group>"; };
+9D0F64922674217F3DA02B6F = { isa = PBXBuildFile; fileRef = 5A86BE470CA12180C085BC03; };
+
+52AFF1EAC3289A5A6F89AFC5 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioAnalysis.swift; sourceTree = "<group>"; };
+4486AC087DE78494D7FDC393 = { isa = PBXBuildFile; fileRef = 52AFF1EAC3289A5A6F89AFC5; };
+
+CAF344CF681DE2F4CB4B91EC = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+A249DDA19BB41A53BB8F2494 = { isa = PBXBuildFile; fileRef = CAF344CF681DE2F4CB4B91EC; };
+2181615C13B594DE3F8EA7E7 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exporter.swift; sourceTree = "<group>"; };
+607D5A933C144CA6CD62EFFF = { isa = PBXBuildFile; fileRef = 2181615C13B594DE3F8EA7E7; };
+3AABE6C7F3088CB135AE3BE5 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MIDI.swift; sourceTree = "<group>"; };
+47C7421967ABE20C2C289409 = { isa = PBXBuildFile; fileRef = 3AABE6C7F3088CB135AE3BE5; };
+19BFBC84FD9B2B92C10227AA = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+487C502A5481E87001E8CC43 = { isa = PBXBuildFile; fileRef = 19BFBC84FD9B2B92C10227AA; };
+505441169761C2A2377F88FE = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
+7DB00426EB59888DA8013915 = { isa = PBXBuildFile; fileRef = 505441169761C2A2377F88FE; };
+1D3815BBF667265D47757C68 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioModel.swift; sourceTree = "<group>"; };
+11D5AAACDCF1A6A7ED500B4F = { isa = PBXBuildFile; fileRef = 1D3815BBF667265D47757C68; };
+2BFA6C0171BB45596CE69AEB = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioView.swift; sourceTree = "<group>"; };
+F9A35F96A342F3DFC87D7888 = { isa = PBXBuildFile; fileRef = 2BFA6C0171BB45596CE69AEB; };
+F8995BA5891B07E328C60D6B = { isa=PBXFileReference;lastKnownFileType=image.icns;path=icon.icns;sourceTree="<group>"; };
+74C2431FE30C4A47C8443B80 = { isa=PBXBuildFile;fileRef=F8995BA5891B07E328C60D6B; };
+0112DAE3F84CB4DF5179BE01 = { isa=PBXFileReference;lastKnownFileType=text.plist.xml;path=Info.plist;sourceTree="<group>"; };
+38A007151ABE87CC01A5B6E9 = { isa=PBXFileReference;explicitFileType=wrapper.application;includeInIndex=0;path="LumaScore.app";sourceTree=BUILT_PRODUCTS_DIR; };
+BCE16DD0260827ECF338C787 = { isa=PBXGroup;children=(D41CE3E76F43793474E82DAF,F89AC4D7E2167AD12308B77E,6DEC2E37D0DDAE05084839AD,4AB430A88A6DCA8A4F908198,E01E158A1250169D0DE90BC9,897F7D27F29B98805EA2266A,5A86BE470CA12180C085BC03,52AFF1EAC3289A5A6F89AFC5,CAF344CF681DE2F4CB4B91EC,2181615C13B594DE3F8EA7E7,3AABE6C7F3088CB135AE3BE5,19BFBC84FD9B2B92C10227AA,505441169761C2A2377F88FE,1D3815BBF667265D47757C68,2BFA6C0171BB45596CE69AEB,);path=Sources;sourceTree="<group>"; };
+FBDC4F23F93125BBEEAE800C = { isa=PBXGroup;children=(38A007151ABE87CC01A5B6E9,);name=Products;sourceTree="<group>"; };
+DC76E9F0C0006E8F919E0C51 = { isa=PBXGroup;children=(BCE16DD0260827ECF338C787,F8995BA5891B07E328C60D6B,0112DAE3F84CB4DF5179BE01,FBDC4F23F93125BBEEAE800C,);sourceTree="<group>"; };
+72A8017E75795FC05F78F54C = { isa=PBXSourcesBuildPhase;buildActionMask=2147483647;files=(CB8A28B3DAEDF82FF8D3984B,3D3C7FBDBA4EEE1A13F5D7A2,902FBD3690D044886D213FBC,5B5E593CD14958B7AD26B4D1,981F5CE8E4A627B6C819A041,8DAC1E7697FA0F06EFF1B6D6,9D0F64922674217F3DA02B6F,4486AC087DE78494D7FDC393,A249DDA19BB41A53BB8F2494,607D5A933C144CA6CD62EFFF,47C7421967ABE20C2C289409,487C502A5481E87001E8CC43,7DB00426EB59888DA8013915,11D5AAACDCF1A6A7ED500B4F,F9A35F96A342F3DFC87D7888,);runOnlyForDeploymentPostprocessing=0; };
+963488E8A773A44C9A5DC523 = { isa=PBXResourcesBuildPhase;buildActionMask=2147483647;files=(EAD6B899F594B854420A205F,74C2431FE30C4A47C8443B80,);runOnlyForDeploymentPostprocessing=0; };
+F01580CCB5F725E4E879D491 = { isa=PBXFrameworksBuildPhase;buildActionMask=2147483647;files=();runOnlyForDeploymentPostprocessing=0; };
+89E1FD6268CC0F221A2BE178 = { isa=XCBuildConfiguration;name=Debug;buildSettings={SDKROOT=macosx;MACOSX_DEPLOYMENT_TARGET=13.0;SWIFT_VERSION=5.0;CLANG_ENABLE_MODULES=YES;SWIFT_OPTIMIZATION_LEVEL="-Onone";SWIFT_ACTIVE_COMPILATION_CONDITIONS=DEBUG;}; };
+E6DE6C99132752C914FEF632 = { isa=XCBuildConfiguration;name=Release;buildSettings={SDKROOT=macosx;MACOSX_DEPLOYMENT_TARGET=13.0;SWIFT_VERSION=5.0;CLANG_ENABLE_MODULES=YES;SWIFT_OPTIMIZATION_LEVEL="-O";SWIFT_COMPILATION_MODE=wholemodule;DEBUG_INFORMATION_FORMAT="dwarf-with-dsym";}; };
+F8C70E4123C9AE82C42562CC = { isa=XCConfigurationList;buildConfigurations=(89E1FD6268CC0F221A2BE178,E6DE6C99132752C914FEF632,);defaultConfigurationIsVisible=0;defaultConfigurationName=Release; };
+7082CC0B6FC1282FCEABD07A = { isa=XCBuildConfiguration;name=Debug;buildSettings={SDKROOT=macosx;MACOSX_DEPLOYMENT_TARGET=13.0;SWIFT_VERSION=5.0;CLANG_ENABLE_MODULES=YES;PRODUCT_NAME="LumaScore";PRODUCT_BUNDLE_IDENTIFIER=io.github.hyperk1ler.lumascore;INFOPLIST_FILE=Info.plist;GENERATE_INFOPLIST_FILE=NO;SWIFT_SERIALIZE_DEBUGGING_OPTIONS=NO;OTHER_SWIFT_FLAGS="$(inherited) -file-prefix-map $(SRCROOT)=/LumaScore/native";CODE_SIGN_STYLE=Manual;CODE_SIGN_IDENTITY="-";ENABLE_APP_SANDBOX=NO;ENABLE_HARDENED_RUNTIME=NO;LD_RUNPATH_SEARCH_PATHS="$(inherited) @executable_path/../Frameworks";SWIFT_OPTIMIZATION_LEVEL="-Onone";SWIFT_ACTIVE_COMPILATION_CONDITIONS=DEBUG;}; };
+639A7CA24D39909E713B47F7 = { isa=XCBuildConfiguration;name=Release;buildSettings={SDKROOT=macosx;MACOSX_DEPLOYMENT_TARGET=13.0;SWIFT_VERSION=5.0;CLANG_ENABLE_MODULES=YES;PRODUCT_NAME="LumaScore";PRODUCT_BUNDLE_IDENTIFIER=io.github.hyperk1ler.lumascore;INFOPLIST_FILE=Info.plist;GENERATE_INFOPLIST_FILE=NO;SWIFT_SERIALIZE_DEBUGGING_OPTIONS=NO;OTHER_SWIFT_FLAGS="$(inherited) -file-prefix-map $(SRCROOT)=/LumaScore/native";CODE_SIGN_STYLE=Manual;CODE_SIGN_IDENTITY="-";ENABLE_APP_SANDBOX=NO;ENABLE_HARDENED_RUNTIME=NO;LD_RUNPATH_SEARCH_PATHS="$(inherited) @executable_path/../Frameworks";SWIFT_OPTIMIZATION_LEVEL="-O";SWIFT_COMPILATION_MODE=wholemodule;DEBUG_INFORMATION_FORMAT="dwarf-with-dsym";}; };
+651ECA092BE81738918D8CDB = { isa=XCConfigurationList;buildConfigurations=(7082CC0B6FC1282FCEABD07A,639A7CA24D39909E713B47F7,);defaultConfigurationIsVisible=0;defaultConfigurationName=Release; };
+0E8A3AD980EC179856012B7E = { isa=PBXNativeTarget;name=LumaScore;productName="LumaScore";productReference=38A007151ABE87CC01A5B6E9;productType="com.apple.product-type.application";buildConfigurationList=651ECA092BE81738918D8CDB;buildPhases=(72A8017E75795FC05F78F54C,F01580CCB5F725E4E879D491,963488E8A773A44C9A5DC523,);buildRules=();dependencies=(); };
+98F54143AB4E86B28C3AFEE0 = { isa=PBXProject;attributes={LastUpgradeCheck=2700;};buildConfigurationList=F8C70E4123C9AE82C42562CC;compatibilityVersion="Xcode 14.0";developmentRegion=en;knownRegions=(en,Base,);mainGroup=DC76E9F0C0006E8F919E0C51;productRefGroup=FBDC4F23F93125BBEEAE800C;projectDirPath="";projectRoot="";targets=(0E8A3AD980EC179856012B7E,); };
+};rootObject=98F54143AB4E86B28C3AFEE0;}

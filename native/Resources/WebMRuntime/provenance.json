@@ -1,0 +1,491 @@
+{
+  "runtime": "Homebrew FFmpeg bottle, relocated as a separate executable",
+  "architecture": "arm64",
+  "binaries": [
+    {
+      "name": "ffmpeg",
+      "originalSHA256": "d03cc94a8150550937430c653b5a79d08d65d11cae3ab06a71018ee4c2e60ec2",
+      "minimumMacOS": "27.0",
+      "packagedSHA256": "1c8f153cf93c1ebf253bdb5b894407bdaafd9d9d1d4f384b448766cd584d3479",
+      "dependencies": [
+        "@loader_path/lib/libavdevice.63.1.102.dylib",
+        "@loader_path/lib/libavfilter.12.1.102.dylib",
+        "@loader_path/lib/libavformat.63.1.102.dylib",
+        "@loader_path/lib/libavcodec.63.1.102.dylib",
+        "@loader_path/lib/libswresample.7.1.102.dylib",
+        "@loader_path/lib/libswscale.10.1.102.dylib",
+        "@loader_path/lib/libavutil.61.1.102.dylib",
+        "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+        "/System/Library/Frameworks/AudioToolbox.framework/Versions/A/AudioToolbox",
+        "/System/Library/Frameworks/CoreAudio.framework/Versions/A/CoreAudio",
+        "/usr/lib/libSystem.B.dylib",
+        "/System/Library/Frameworks/AVFoundation.framework/Versions/A/AVFoundation",
+        "/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo",
+        "/System/Library/Frameworks/CoreMedia.framework/Versions/A/CoreMedia",
+        "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+        "/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL",
+        "/usr/lib/libz.1.dylib",
+        "@loader_path/lib/libvmaf.3.dylib",
+        "/System/Library/Frameworks/Metal.framework/Versions/A/Metal",
+        "/System/Library/Frameworks/VideoToolbox.framework/Versions/A/VideoToolbox",
+        "/System/Library/Frameworks/CoreImage.framework/Versions/A/CoreImage",
+        "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+        "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+        "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices",
+        "/usr/lib/libbz2.1.0.dylib",
+        "@loader_path/lib/libssl.3.dylib",
+        "@loader_path/lib/libcrypto.3.dylib",
+        "@loader_path/lib/libvpx.12.dylib",
+        "/usr/lib/libiconv.2.dylib",
+        "@loader_path/lib/liblzma.5.dylib",
+        "@loader_path/lib/libdav1d.7.dylib",
+        "@loader_path/lib/libmp3lame.0.dylib",
+        "@loader_path/lib/libopus.0.dylib",
+        "@loader_path/lib/libSvtAv1Enc.4.1.0.dylib",
+        "@loader_path/lib/libx264.165.dylib",
+        "@loader_path/lib/libx265.217.dylib"
+      ]
+    },
+    {
+      "name": "ffprobe",
+      "originalSHA256": "fca577f8e9b6a1d2ec1eb33953f7cb9a40c2af592267b9d69b360e1a40abbc56",
+      "minimumMacOS": "27.0",
+      "packagedSHA256": "8345be25462eafa96751f080217c3d285c2b097fff68f88f31d4fa5b9c595aa5",
+      "dependencies": [
+        "@loader_path/lib/libavdevice.63.1.102.dylib",
+        "@loader_path/lib/libavfilter.12.1.102.dylib",
+        "@loader_path/lib/libavformat.63.1.102.dylib",
+        "@loader_path/lib/libavcodec.63.1.102.dylib",
+        "@loader_path/lib/libswresample.7.1.102.dylib",
+        "@loader_path/lib/libswscale.10.1.102.dylib",
+        "@loader_path/lib/libavutil.61.1.102.dylib",
+        "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+        "/System/Library/Frameworks/AudioToolbox.framework/Versions/A/AudioToolbox",
+        "/System/Library/Frameworks/CoreAudio.framework/Versions/A/CoreAudio",
+        "/usr/lib/libSystem.B.dylib",
+        "/System/Library/Frameworks/AVFoundation.framework/Versions/A/AVFoundation",
+        "/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo",
+        "/System/Library/Frameworks/CoreMedia.framework/Versions/A/CoreMedia",
+        "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+        "/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL",
+        "/usr/lib/libz.1.dylib",
+        "@loader_path/lib/libvmaf.3.dylib",
+        "/System/Library/Frameworks/Metal.framework/Versions/A/Metal",
+        "/System/Library/Frameworks/VideoToolbox.framework/Versions/A/VideoToolbox",
+        "/System/Library/Frameworks/CoreImage.framework/Versions/A/CoreImage",
+        "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+        "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+        "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices",
+        "/usr/lib/libbz2.1.0.dylib",
+        "@loader_path/lib/libssl.3.dylib",
+        "@loader_path/lib/libcrypto.3.dylib",
+        "@loader_path/lib/libvpx.12.dylib",
+        "/usr/lib/libiconv.2.dylib",
+        "@loader_path/lib/liblzma.5.dylib",
+        "@loader_path/lib/libdav1d.7.dylib",
+        "@loader_path/lib/libmp3lame.0.dylib",
+        "@loader_path/lib/libopus.0.dylib",
+        "@loader_path/lib/libSvtAv1Enc.4.1.0.dylib",
+        "@loader_path/lib/libx264.165.dylib",
+        "@loader_path/lib/libx265.217.dylib"
+      ]
+    },
+    {
+      "name": "libavdevice.63.1.102.dylib",
+      "originalSHA256": "66a4c3de573e6883786a4895db6548b25950ae28d9075f6d330d23941a2ae7f1",
+      "minimumMacOS": "27.0",
+      "packagedSHA256": "b0786341b96826e556b67cefffe8178f8919cf25ea3960d1b29a747de1fb4639",
+      "dependencies": [
+        "@loader_path/libavdevice.63.1.102.dylib",
+        "@loader_path/libavfilter.12.1.102.dylib",
+        "@loader_path/libswscale.10.1.102.dylib",
+        "@loader_path/libavformat.63.1.102.dylib",
+        "@loader_path/libavcodec.63.1.102.dylib",
+        "@loader_path/libswresample.7.1.102.dylib",
+        "@loader_path/libavutil.61.1.102.dylib",
+        "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+        "/System/Library/Frameworks/AudioToolbox.framework/Versions/A/AudioToolbox",
+        "/System/Library/Frameworks/CoreAudio.framework/Versions/A/CoreAudio",
+        "/usr/lib/libSystem.B.dylib",
+        "/System/Library/Frameworks/AVFoundation.framework/Versions/A/AVFoundation",
+        "/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo",
+        "/System/Library/Frameworks/CoreMedia.framework/Versions/A/CoreMedia",
+        "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+        "/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL",
+        "/usr/lib/libz.1.dylib",
+        "@loader_path/libvmaf.3.dylib",
+        "/System/Library/Frameworks/Metal.framework/Versions/A/Metal",
+        "/System/Library/Frameworks/VideoToolbox.framework/Versions/A/VideoToolbox",
+        "/System/Library/Frameworks/CoreImage.framework/Versions/A/CoreImage",
+        "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+        "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+        "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices",
+        "/usr/lib/libbz2.1.0.dylib",
+        "@loader_path/libssl.3.dylib",
+        "@loader_path/libcrypto.3.dylib",
+        "@loader_path/libvpx.12.dylib",
+        "/usr/lib/libiconv.2.dylib",
+        "@loader_path/liblzma.5.dylib",
+        "@loader_path/libdav1d.7.dylib",
+        "@loader_path/libmp3lame.0.dylib",
+        "@loader_path/libopus.0.dylib",
+        "@loader_path/libSvtAv1Enc.4.1.0.dylib",
+        "@loader_path/libx264.165.dylib",
+        "@loader_path/libx265.217.dylib",
+        "/usr/lib/libobjc.A.dylib"
+      ]
+    },
+    {
+      "name": "libavfilter.12.1.102.dylib",
+      "originalSHA256": "c3cf003eaea25a4dbcab8bac49577dee6960e6c9dde34119fb6b6a514a48b32d",
+      "minimumMacOS": "27.0",
+      "packagedSHA256": "7075ef90a0e95dbc3585a45e9308a0ebcd9bd1946429c70f8a5336095deaee2c",
+      "dependencies": [
+        "@loader_path/libavfilter.12.1.102.dylib",
+        "@loader_path/libswscale.10.1.102.dylib",
+        "@loader_path/libavformat.63.1.102.dylib",
+        "@loader_path/libavcodec.63.1.102.dylib",
+        "@loader_path/libswresample.7.1.102.dylib",
+        "@loader_path/libavutil.61.1.102.dylib",
+        "/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL",
+        "/usr/lib/libSystem.B.dylib",
+        "/usr/lib/libz.1.dylib",
+        "@loader_path/libvmaf.3.dylib",
+        "/System/Library/Frameworks/Metal.framework/Versions/A/Metal",
+        "/System/Library/Frameworks/VideoToolbox.framework/Versions/A/VideoToolbox",
+        "/System/Library/Frameworks/CoreImage.framework/Versions/A/CoreImage",
+        "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+        "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+        "/System/Library/Frameworks/CoreMedia.framework/Versions/A/CoreMedia",
+        "/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo",
+        "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices",
+        "/usr/lib/libbz2.1.0.dylib",
+        "@loader_path/libssl.3.dylib",
+        "@loader_path/libcrypto.3.dylib",
+        "@loader_path/libvpx.12.dylib",
+        "/usr/lib/libiconv.2.dylib",
+        "@loader_path/liblzma.5.dylib",
+        "@loader_path/libdav1d.7.dylib",
+        "/System/Library/Frameworks/AudioToolbox.framework/Versions/A/AudioToolbox",
+        "@loader_path/libmp3lame.0.dylib",
+        "@loader_path/libopus.0.dylib",
+        "@loader_path/libSvtAv1Enc.4.1.0.dylib",
+        "@loader_path/libx264.165.dylib",
+        "@loader_path/libx265.217.dylib",
+        "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+        "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+        "/usr/lib/libobjc.A.dylib"
+      ]
+    },
+    {
+      "name": "libavformat.63.1.102.dylib",
+      "originalSHA256": "a2e3fc9017ec704e16a092bce102e2e07537de4955fa0081cd481829f99b4360",
+      "minimumMacOS": "27.0",
+      "packagedSHA256": "964775ecc57a85e49641b4b47d235e224ffd76bbd0bebd4a1f4efb2afb267bf5",
+      "dependencies": [
+        "@loader_path/libavformat.63.1.102.dylib",
+        "@loader_path/libavcodec.63.1.102.dylib",
+        "@loader_path/libswresample.7.1.102.dylib",
+        "@loader_path/libavutil.61.1.102.dylib",
+        "/usr/lib/libSystem.B.dylib",
+        "/usr/lib/libbz2.1.0.dylib",
+        "/usr/lib/libz.1.dylib",
+        "@loader_path/libssl.3.dylib",
+        "@loader_path/libcrypto.3.dylib",
+        "@loader_path/libvpx.12.dylib",
+        "/usr/lib/libiconv.2.dylib",
+        "@loader_path/liblzma.5.dylib",
+        "@loader_path/libdav1d.7.dylib",
+        "/System/Library/Frameworks/AudioToolbox.framework/Versions/A/AudioToolbox",
+        "@loader_path/libmp3lame.0.dylib",
+        "@loader_path/libopus.0.dylib",
+        "@loader_path/libSvtAv1Enc.4.1.0.dylib",
+        "@loader_path/libx264.165.dylib",
+        "@loader_path/libx265.217.dylib",
+        "/System/Library/Frameworks/VideoToolbox.framework/Versions/A/VideoToolbox",
+        "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+        "/System/Library/Frameworks/CoreMedia.framework/Versions/A/CoreMedia",
+        "/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo",
+        "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices"
+      ]
+    },
+    {
+      "name": "libavcodec.63.1.102.dylib",
+      "originalSHA256": "a946841123cad97e4b29fb48ee415cc2f3f2d897658d48c36981e846bc104193",
+      "minimumMacOS": "27.0",
+      "packagedSHA256": "051be9bd6e4d1fa9ad964ae55fbf3fbceb8a23ae0e55bb4a016258aa718f3380",
+      "dependencies": [
+        "@loader_path/libavcodec.63.1.102.dylib",
+        "@loader_path/libswresample.7.1.102.dylib",
+        "@loader_path/libavutil.61.1.102.dylib",
+        "@loader_path/libvpx.12.dylib",
+        "/usr/lib/libSystem.B.dylib",
+        "/usr/lib/libiconv.2.dylib",
+        "@loader_path/liblzma.5.dylib",
+        "@loader_path/libdav1d.7.dylib",
+        "/System/Library/Frameworks/AudioToolbox.framework/Versions/A/AudioToolbox",
+        "@loader_path/libmp3lame.0.dylib",
+        "@loader_path/libopus.0.dylib",
+        "@loader_path/libSvtAv1Enc.4.1.0.dylib",
+        "@loader_path/libx264.165.dylib",
+        "@loader_path/libx265.217.dylib",
+        "/usr/lib/libz.1.dylib",
+        "/System/Library/Frameworks/VideoToolbox.framework/Versions/A/VideoToolbox",
+        "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+        "/System/Library/Frameworks/CoreMedia.framework/Versions/A/CoreMedia",
+        "/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo",
+        "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices",
+        "@loader_path/libssl.3.dylib",
+        "@loader_path/libcrypto.3.dylib"
+      ]
+    },
+    {
+      "name": "libswresample.7.1.102.dylib",
+      "originalSHA256": "bf243f2f9862fdffac1c13267a7df3635c8bf269b23d3a5457f439920e7a3ab5",
+      "minimumMacOS": "27.0",
+      "packagedSHA256": "634a4c6b16a1f0ec293fd4c8434456f8779a29c89c1b4fdc640a0aec1607cf31",
+      "dependencies": [
+        "@loader_path/libswresample.7.1.102.dylib",
+        "@loader_path/libavutil.61.1.102.dylib",
+        "/usr/lib/libSystem.B.dylib",
+        "/usr/lib/libz.1.dylib",
+        "@loader_path/libssl.3.dylib",
+        "@loader_path/libcrypto.3.dylib",
+        "/System/Library/Frameworks/VideoToolbox.framework/Versions/A/VideoToolbox",
+        "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+        "/System/Library/Frameworks/CoreMedia.framework/Versions/A/CoreMedia",
+        "/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo",
+        "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices"
+      ]
+    },
+    {
+      "name": "libswscale.10.1.102.dylib",
+      "originalSHA256": "aa843f81ea8b8d0b8feac790d3e6b18bee2060e495fc19c5846c035c2729aaae",
+      "minimumMacOS": "27.0",
+      "packagedSHA256": "22c9041ff9511b24d3ceaec297ed96499e8507cf2b3e1d113ff82aecaab820c3",
+      "dependencies": [
+        "@loader_path/libswscale.10.1.102.dylib",
+        "@loader_path/libavutil.61.1.102.dylib",
+        "/usr/lib/libSystem.B.dylib",
+        "/usr/lib/libz.1.dylib",
+        "@loader_path/libssl.3.dylib",
+        "@loader_path/libcrypto.3.dylib",
+        "/System/Library/Frameworks/VideoToolbox.framework/Versions/A/VideoToolbox",
+        "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+        "/System/Library/Frameworks/CoreMedia.framework/Versions/A/CoreMedia",
+        "/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo",
+        "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices"
+      ]
+    },
+    {
+      "name": "libavutil.61.1.102.dylib",
+      "originalSHA256": "61c0ab9312ab1625f861c33c8e97727731cf1b147aabe84d5edb16d8b3d5e44b",
+      "minimumMacOS": "27.0",
+      "packagedSHA256": "57d7df9d70c36d1b10fb3f88c7d6369556e1011128f7c5e90e62cf65751ab925",
+      "dependencies": [
+        "@loader_path/libavutil.61.1.102.dylib",
+        "/usr/lib/libSystem.B.dylib",
+        "/usr/lib/libz.1.dylib",
+        "@loader_path/libssl.3.dylib",
+        "@loader_path/libcrypto.3.dylib",
+        "/System/Library/Frameworks/VideoToolbox.framework/Versions/A/VideoToolbox",
+        "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+        "/System/Library/Frameworks/CoreMedia.framework/Versions/A/CoreMedia",
+        "/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo",
+        "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices"
+      ]
+    },
+    {
+      "name": "libvmaf.3.dylib",
+      "originalSHA256": "a825cdd3ff46fa6282aa1cb9328c701e9950e944f2c8821d88481779b3472d46",
+      "minimumMacOS": "27.0",
+      "packagedSHA256": "9dc547b56d1da232a32f808ff6724dad6cd6c0bd64f21df8ae96413e3853ec4b",
+      "dependencies": [
+        "@loader_path/libvmaf.3.dylib",
+        "/usr/lib/libSystem.B.dylib",
+        "/usr/lib/libc++.1.dylib"
+      ]
+    },
+    {
+      "name": "libssl.3.dylib",
+      "originalSHA256": "2b343dc7a88d6e49720ae6b939a178b5e688912e682044250203770b8acc2a08",
+      "minimumMacOS": "27.0",
+      "packagedSHA256": "17101303986080279f4be8f8ffe71238353bad77d8c93a0a1f2fcacf3edebf4f",
+      "dependencies": [
+        "@loader_path/libssl.3.dylib",
+        "@loader_path/libcrypto.3.dylib",
+        "/usr/lib/libSystem.B.dylib"
+      ]
+    },
+    {
+      "name": "libcrypto.3.dylib",
+      "originalSHA256": "6c7139ae515b274286b2f62d662a173e32d34854e1fc26cca46ee08efe16ae45",
+      "minimumMacOS": "27.0",
+      "packagedSHA256": "fb2bfcf1a2957c432eeaee90a57d31e5b82f0ee5aae75cd5286a78d5d3fd504c",
+      "dependencies": [
+        "@loader_path/libcrypto.3.dylib",
+        "/usr/lib/libSystem.B.dylib"
+      ]
+    },
+    {
+      "name": "libvpx.12.dylib",
+      "originalSHA256": "7cbbd0ab0d9f53a699761a3caccf0ea18bf779d46f7225693cb2c1ac4e7bca3b",
+      "minimumMacOS": "27.0",
+      "packagedSHA256": "e7f7fc33db9ae8e715689898e8fa3dca27636eadd3706b4e8a9f512934124a45",
+      "dependencies": [
+        "@loader_path/libvpx.12.dylib",
+        "/usr/lib/libSystem.B.dylib",
+        "/usr/lib/libc++.1.dylib"
+      ]
+    },
+    {
+      "name": "liblzma.5.dylib",
+      "originalSHA256": "1b2e12cc1b920264f3dd15eeba22e85b8afd589595d8945d1d12a52afa694b09",
+      "minimumMacOS": "27.0",
+      "packagedSHA256": "8a6c4bf21391271d02f3f618dd476de7a14427a5842c8617f8d6a11d89ef4f34",
+      "dependencies": [
+        "@loader_path/liblzma.5.dylib",
+        "/usr/lib/libSystem.B.dylib"
+      ]
+    },
+    {
+      "name": "libdav1d.7.dylib",
+      "originalSHA256": "bdd18b4f70a9e8956a58de310d8acfdad2ecf6b1be00b813b397e14331d5d0bd",
+      "minimumMacOS": "26.0",
+      "packagedSHA256": "3dd09972de7e2c99be0db56f79de9d13afdfdb3105fdaed750a0fce69c91ce76",
+      "dependencies": [
+        "@loader_path/libdav1d.7.dylib",
+        "/usr/lib/libSystem.B.dylib"
+      ]
+    },
+    {
+      "name": "libmp3lame.0.dylib",
+      "originalSHA256": "3ed639aaad2ca985776df91dc15d11b50340905d6d4b86bc77bb718794352f7a",
+      "minimumMacOS": "26.0",
+      "packagedSHA256": "a4b328b5419000a43486f19ba8eff6476cae5813c60553a65a5497e4ca20313f",
+      "dependencies": [
+        "@loader_path/libmp3lame.0.dylib",
+        "/usr/lib/libSystem.B.dylib"
+      ]
+    },
+    {
+      "name": "libopus.0.dylib",
+      "originalSHA256": "98dcd3cc62c6cf913b789051536ab246c56cc163c74bd8b4968ac467ec74b68b",
+      "minimumMacOS": "26.0",
+      "packagedSHA256": "b4906006890d36203a648b3c30352c84586edb1c35e33207e2899bedb52b699d",
+      "dependencies": [
+        "@loader_path/libopus.0.dylib",
+        "/usr/lib/libSystem.B.dylib"
+      ]
+    },
+    {
+      "name": "libSvtAv1Enc.4.1.0.dylib",
+      "originalSHA256": "edbb56bc43e48058af25e4b65d5da3a2a0de7aa2bce468dba43f88ac58beaad5",
+      "minimumMacOS": "26.0",
+      "packagedSHA256": "c17c62af6755541e01b58f5af2ce56f381420e7f130626ccb3a52f6fdd768a36",
+      "dependencies": [
+        "@loader_path/libSvtAv1Enc.4.1.0.dylib",
+        "/usr/lib/libSystem.B.dylib"
+      ]
+    },
+    {
+      "name": "libx264.165.dylib",
+      "originalSHA256": "dd765b37f50d44d3ce9593c2c1c2424b48bedac01c7999e93cef87e018bc65b4",
+      "minimumMacOS": "26.0",
+      "packagedSHA256": "181a9cd572721c46a20c0ff0f619e2413752310cfa2751f4ee17412472362c3a",
+      "dependencies": [
+        "@loader_path/libx264.165.dylib",
+        "/usr/lib/libSystem.B.dylib"
+      ]
+    },
+    {
+      "name": "libx265.217.dylib",
+      "originalSHA256": "77c26ea29afca3c99cdc45354539eca99c1bbd902d6c1e08f7f5ab0156c11cb0",
+      "minimumMacOS": "27.0",
+      "packagedSHA256": "39da9d0fff0f6e4b944a151e10d2e1f5f21332c9df0e782a13cb1019a4712644",
+      "dependencies": [
+        "@loader_path/libx265.217.dylib",
+        "/usr/lib/libSystem.B.dylib",
+        "/usr/lib/libc++.1.dylib"
+      ]
+    }
+  ],
+  "sourcePackages": [
+    {
+      "package": "ffmpeg",
+      "version": "9.0.2",
+      "sourceURL": "https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz",
+      "sourceSHA256": "8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e",
+      "license": "\"GPL-3.0-or-later\""
+    },
+    {
+      "package": "dav1d",
+      "version": "1.5.3",
+      "sourceURL": "https://code.videolan.org/videolan/dav1d/-/archive/1.5.3/dav1d-1.5.3.tar.bz2",
+      "sourceSHA256": "e099f53253f6c247580c554d53a13f1040638f2066edc3c740e4c2f15174ce22",
+      "license": "\"BSD-2-Clause\""
+    },
+    {
+      "package": "lame",
+      "version": "3.100",
+      "sourceURL": "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz",
+      "sourceSHA256": "ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e",
+      "license": "\"LGPL-2.0-or-later\""
+    },
+    {
+      "package": "libvmaf",
+      "version": "3.2.1",
+      "sourceURL": "https://github.com/Netflix/vmaf/archive/refs/tags/v3.2.1.tar.gz",
+      "sourceSHA256": "5df7386911bc15fd1ca783132528748d219768ae4fc5f8e0b61184f041648092",
+      "license": "\"BSD-2-Clause-Patent\""
+    },
+    {
+      "package": "libvpx",
+      "version": "1.17.0",
+      "sourceURL": "https://github.com/webmproject/libvpx/archive/refs/tags/v1.17.0.tar.gz",
+      "sourceSHA256": "1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a",
+      "license": "\"BSD-3-Clause\""
+    },
+    {
+      "package": "openssl@3",
+      "version": "3.6.5",
+      "sourceURL": "https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz",
+      "sourceSHA256": "a2157c2830efdec3788939b00c9b0638306d3f0bbb76dc4832ee503bb397df98",
+      "license": "\"Apache-2.0\""
+    },
+    {
+      "package": "opus",
+      "version": "1.6.1",
+      "sourceURL": "https://ftp.osuosl.org/pub/xiph/releases/opus/opus-1.6.1.tar.gz",
+      "sourceSHA256": "6ffcb593207be92584df15b32466ed64bbec99109f007c82205f0194572411a1",
+      "license": "\"BSD-3-Clause\""
+    },
+    {
+      "package": "svt-av1",
+      "version": "4.1.0",
+      "sourceURL": "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v4.1.0/SVT-AV1-v4.1.0.tar.bz2",
+      "sourceSHA256": "184162d3db3a4448882b17230413b4938ca252eef6b3c5e2f1236b2fcf497881",
+      "license": "\"BSD-3-Clause\""
+    },
+    {
+      "package": "x264",
+      "version": "r3222",
+      "sourceURL": "https://code.videolan.org/videolan/x264.git",
+      "license": "\"GPL-2.0-or-later\""
+    },
+    {
+      "package": "x265",
+      "version": "4.3",
+      "sourceURL": "https://github.com/Multicorewareinc/x265/releases/download/4.3/x265_4.3.tar.gz",
+      "sourceSHA256": "83c53e4c8bbb8f1e33ed59e10a7d621d1d7801ca853910c3eb41f038b8ffb121",
+      "license": "\"GPL-2.0-or-later\""
+    },
+    {
+      "package": "xz",
+      "version": "5.8.4",
+      "sourceURL": "https://github.com/tukaani-project/xz/releases/download/v5.8.4/xz-5.8.4.tar.gz",
+      "sourceSHA256": "0014c7886930454fe8bd4228665b51af55eeae560ea135c9c4cd33f55b2591d9",
+      "license": "all_of: ["
+    }
+  ]
+}

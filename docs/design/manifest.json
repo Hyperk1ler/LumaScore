@@ -1,0 +1,78 @@
+{
+  "app": "LumaScore",
+  "pen_document": "Design.pen",
+  "local_save": "Use Cmd+S in the open Pen document",
+  "design_only": true,
+  "layout_problems": 0,
+  "boards": [
+    {
+      "id": "w8psaW",
+      "label": "A · Unified Native / 原生工作台",
+      "preview": "previews/A8Tec.png"
+    },
+    {
+      "id": "ltHB5",
+      "label": "B · Instrument Dock / 仪器面板",
+      "preview": "previews/FP3zP.png"
+    },
+    {
+      "id": "YD8ol",
+      "label": "C · Canvas / 沉浸画布",
+      "preview": "previews/m0BrP.png"
+    },
+    {
+      "id": "VKHW6",
+      "label": "1 · Orbit / 仪表",
+      "preview": "previews/C12eC.png"
+    },
+    {
+      "id": "J34Uq",
+      "label": "2 · Spectral Field / 频谱场",
+      "preview": "previews/ddyad.png"
+    },
+    {
+      "id": "VJHFc",
+      "label": "3 · Record Sleeve / 片封",
+      "preview": "previews/NHJh9.png"
+    },
+    {
+      "id": "E7IzNj",
+      "label": "Motion & Texture / 节拍器与背景",
+      "preview": "previews/E7IzNj.png"
+    }
+  ],
+  "revision": 2,
+  "decisions": {
+    "ui": "A with independently collapsible sidebars",
+    "collapsed_inspector": "editable numeric controls, switches, and category popovers",
+    "audio_templates": [
+      "Orbit",
+      "Spectral Field",
+      "Record Sleeve"
+    ],
+    "metronome": "independent optional setting, preserved across template switches",
+    "sleeve_layout": "original layout, vertical centering only"
+  },
+  "revision_boards": [
+    {
+      "id": "E4rK8",
+      "state": "expanded",
+      "preview": "previews/owqVz.png"
+    },
+    {
+      "id": "OS5yh",
+      "state": "media rail",
+      "preview": "previews/vKixG.png"
+    },
+    {
+      "id": "mw4I2",
+      "state": "both collapsed",
+      "preview": "previews/VTRZI.png"
+    },
+    {
+      "id": "w0Yygr",
+      "state": "quick editor",
+      "preview": "previews/j8dwhg.png"
+    }
+  ]
+}

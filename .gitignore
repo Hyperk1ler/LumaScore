@@ -1,0 +1,18 @@
+# Local outputs
+/outputs/
+# Generated dependencies/build products
+**/node_modules/
+**/build/
+**/build-perf/
+**/build-v2/
+**/WebMRuntimeBuild/
+**/DerivedData/
+**/ModuleCache/
+**/xcuserdata/
+*.xcuserstate
+*.app/
+*.dSYM/
+.DS_Store
+.env
+.env.*
+*.lumascore
