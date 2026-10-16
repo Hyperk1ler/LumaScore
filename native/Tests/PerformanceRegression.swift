@@ -54,7 +54,6 @@ import Metal
   try check(fast.intermediates[0] != nil,"Screen fade retains post-processing")
   let effectCases:[(String,(inout StudioSettings)->Void)]=[
     ("CRT",{$0.crtEnabled=true}),("Lens",{$0.fisheye=0.2}),
-    ("Bloom",{$0.bloomEnabled=true;$0.glow=0.2}),
     ("Grade",{$0.colorFilterEnabled=true;$0.brightness=0.1}),
     ("Camera punch",{$0.cameraPunch=0.1}),("Camera shake",{$0.cameraShake=0.1})]
   for (name,change) in effectCases {
@@ -63,6 +62,18 @@ import Metal
     try draw(effect)
     try check(effect.intermediates[0] != nil,"\(name) retains post-processing")
   }
+  var emptyBloom = plainSnapshot; emptyBloom.settings.bloomEnabled = true; emptyBloom.settings.glow = 0.4
+  let empty = try MetalSceneRenderer(snapshot: emptyBloom)
+  try draw(empty)
+  try check(empty.bloomTargets[0] == nil && empty.intermediates[0] == nil,"Non-emissive scene skips bloom allocation and passes")
+  var glowing = snapshot; glowing.settings.glow = 0.4; glowing.settings.glowRadius = 12
+  let bloom = try MetalSceneRenderer(snapshot: glowing)
+  try draw(bloom)
+  let emission = bloom.bloomTargets[0]!.emission
+  let input = bloom.bloomTargets[0]!.input
+  let blurred = bloom.bloomTargets[0]!.blurred
+  glowing.settings.glowRadius = 30; try bloom.update(glowing); try draw(bloom)
+  try check(bloom.bloomTargets[0]!.emission === emission && bloom.bloomTargets[0]!.input === input && bloom.bloomTargets[0]!.blurred === blurred,"Bloom radius edits reuse all GPU textures")
   print("ALL PERFORMANCE REGRESSIONS PASSED")
  }
 }

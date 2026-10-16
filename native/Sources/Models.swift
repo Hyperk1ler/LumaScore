@@ -630,6 +630,7 @@ struct ExportStatistics: Codable {
   var cpuBuildMeanMS: Double
   var gpuMeanMS: Double
   var audioIncluded: Bool
+  var rendererBackend: String? = nil
 }
 enum StudioError: LocalizedError {
   case message(String)

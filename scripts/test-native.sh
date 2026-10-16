@@ -28,6 +28,8 @@ compile_test tracks "${task_core[@]}" Tests/TrackEditingRegression.swift
 run_test tracks
 compile_test performance "${task_core[@]}" Tests/PerformanceRegression.swift
 run_test performance Fixtures/representative-5s.wav
+compile_test metal4 "${task_core[@]}" Tests/Metal4Regression.swift
+run_test metal4
 compile_test scenes "${task_core[@]}" Tests/AudioTemplateRegression.swift
 run_test scenes "$task_test_dir/scene-frames"
 if [[ "${1:-}" == "--playback" ]]; then

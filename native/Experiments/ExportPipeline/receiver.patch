@@ -1,0 +1,302 @@
+--- a/Sources/Exporter.swift
++++ b/Sources/Exporter.swift
+@@ -5,17 +5,69 @@
+ import Metal
+ import VideoToolbox
+ 
++@available(macOS 26.0, *)
++private final class ModernPixelWriter {
++  let receiver: AVAssetWriterInput.PixelBufferReceiver
++  private let metricsLock = NSLock()
++  private var immediateSeconds = 0.0, suspendedSeconds = 0.0
++  private var immediateCount = 0, suspendedCount = 0
++  var metrics: (Double, Double, Int) {
++    metricsLock.lock(); defer { metricsLock.unlock() }
++    return (immediateSeconds * 1000 / Double(max(1, immediateCount)), suspendedSeconds, suspendedCount)
++  }
++  init(writer: AVAssetWriter, input: AVAssetWriterInput, width: Int, height: Int) {
++    var attributes = CVPixelBufferCreationAttributes(
++      pixelFormatType: .init(rawValue: kCVPixelFormatType_32BGRA),
++      size: .init(width: width, height: height), compatibility: [.metalTexture])
++    attributes.backing = .ioSurface
++    receiver = writer.inputPixelBufferReceiver(for: input, pixelBufferAttributes: attributes)
++  }
++  func allocate() throws -> CVPixelBuffer {
++    guard let pool = receiver.pixelBufferPool else { throw StudioError.message("缺少接收器像素池") }
++    let mutable = try pool.makeMutablePixelBuffer(.init(allocationThreshold: 12))
++    // The private producer owns this retained CF reference until GPU completion.
++    // It becomes read-only only when append is called; no later GPU write aliases it.
++    return mutable.withUnsafeBuffer { $0 }
++  }
++  func appendImmediately(_ pixel: CVPixelBuffer, time: CMTime) throws -> Bool {
++    try appendImmediately(CVReadOnlyPixelBuffer(unsafeBuffer: pixel), time: time)
++  }
++  private func appendImmediately(_ immutable: CVReadOnlyPixelBuffer, time: CMTime) throws -> Bool {
++    let begin = ProcessInfo.processInfo.systemUptime
++    let accepted = try receiver.appendImmediately(immutable, with: time)
++    let elapsed = ProcessInfo.processInfo.systemUptime - begin
++    metricsLock.lock(); immediateSeconds += elapsed; immediateCount += 1; metricsLock.unlock()
++    return accepted
++  }
++  func append(_ pixel: CVPixelBuffer, time: CMTime) async throws {
++    let immutable = CVReadOnlyPixelBuffer(unsafeBuffer: pixel)
++    if try !appendImmediately(immutable, time: time) {
++      let begin = ProcessInfo.processInfo.systemUptime
++      try await receiver.append(immutable, with: time)
++      let elapsed = ProcessInfo.processInfo.systemUptime - begin
++      metricsLock.withLock { suspendedSeconds += elapsed; suspendedCount += 1 }
++    }
++  }
++}
++
+ final class ExportOperation {
+   private let snapshot: RenderSnapshot, audioURL: URL?, destination: URL,
+     progress: (Double) -> Void, completion: (Result<ExportStatistics, Error>) -> Void
+   private let videoQueue = DispatchQueue(label: "lumascore.export.video", qos: .userInitiated),
+     audioQueue = DispatchQueue(label: "lumascore.export.audio", qos: .userInitiated)
+   private let lock = NSLock()
++  private let videoQueueKey = DispatchSpecificKey<Bool>()
+   private var cancelled = false, finished = false
+   private var writer: AVAssetWriter!, videoInput: AVAssetWriterInput!,
+     audioInput: AVAssetWriterInput?, adaptor: AVAssetWriterInputPixelBufferAdaptor!,
+     reader: AVAssetReader?, audioOutput: AVAssetReaderTrackOutput?
+   private var intermediateURL: URL?
++  private var modernWriter: Any?
++  private var receiverAppendTask: Task<Void, Never>?
++  private var receiverAppendPending = false
++  private var usesAsyncReceiver: Bool {
++    modernWriter != nil && ProcessInfo.processInfo.environment["LUMASCORE_RECEIVER_MODE"] != "immediate"
++  }
+   private let rendererBackend: RendererBackend
+   private var renderer: MetalSceneRenderer!, cache: CVMetalTextureCache?
+   private let group = DispatchGroup()
+@@ -36,11 +88,16 @@
+     self.progress = progress
+     self.completion = completion
+     self.rendererBackend = rendererBackend
++    videoQueue.setSpecific(key: videoQueueKey, value: true)
+   }
+   func cancel() {
+     lock.lock()
+     cancelled = true
+     lock.unlock()
++    videoQueue.async { [self] in
++      receiverAppendTask?.cancel()
++      fail(StudioError.message("已取消导出"))
++    }
+   }
+   private var stopped: Bool {
+     lock.lock()
+@@ -48,11 +105,12 @@
+     return cancelled || finished
+   }
+   func startExport() {
+-    DispatchQueue.global(qos: .userInitiated).async { [self] in
++    videoQueue.async { [self] in
+       do { try prepare() } catch { fail(error) }
+     }
+   }
+   private func prepare() throws {
++    guard !stopped else { throw StudioError.message("已取消导出") }
+     began = ProcessInfo.processInfo.systemUptime
+     let settings = snapshot.settings
+     try settings.validate()
+@@ -111,7 +169,10 @@
+     }
+     videoInput = AVAssetWriterInput(mediaType: .video, outputSettings: output)
+     videoInput.expectsMediaDataInRealTime = false
+-    adaptor = AVAssetWriterInputPixelBufferAdaptor(
++    if #available(macOS 26.0, *), ProcessInfo.processInfo.environment["LUMASCORE_RECEIVER_MODE"] != "legacy" {
++      modernWriter = ModernPixelWriter(writer: writer, input: videoInput, width: width, height: height)
++    } else {
++      adaptor = AVAssetWriterInputPixelBufferAdaptor(
+       assetWriterInput: videoInput,
+       sourcePixelBufferAttributes: [
+         kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+@@ -122,6 +183,7 @@
+       ])
+     guard writer.canAdd(videoInput) else { throw StudioError.message("无法创建视频轨道") }
+     writer.add(videoInput)
++    }
+     if let asset = audioAsset, let track = asset.tracks(withMediaType: .audio).first {
+       let audioStart = max(0, start - settings.intro)
+       let audioEnd = min(audioDuration, start + duration - settings.intro)
+@@ -164,7 +226,11 @@
+       audioEntered = true
+     }
+     lock.unlock()
+-    videoInput.requestMediaDataWhenReady(on: videoQueue) { [weak self] in self?.pumpVideo() }
++    if usesAsyncReceiver {
++      videoQueue.async { [weak self] in self?.pumpVideo() }
++    } else {
++      videoInput.requestMediaDataWhenReady(on: videoQueue) { [weak self] in self?.pumpVideo() }
++    }
+     if let audioInput = audioInput {
+       audioInput.requestMediaDataWhenReady(on: audioQueue) { [weak self] in self?.pumpAudio() }
+     }
+@@ -196,7 +262,7 @@
+         let bytes =
+           (try? FileManager.default.attributesOfItem(atPath: destination.path)[.size] as? NSNumber)?
+           .int64Value ?? 0
+-        let stats = ExportStatistics(
++        var stats = ExportStatistics(
+           width: width, height: height, fps: fps, frames: frameCount, duration: duration,
+           elapsed: elapsed, framesPerSecond: Double(frameCount) / elapsed,
+           realtimeMultiple: duration / elapsed, codec: settings.container == .webm ? "VP9":settings.codec.rawValue,
+@@ -204,12 +270,23 @@
+           peakResidentMB: Double(usage.ru_maxrss) / 1_048_576, outputBytes: bytes,
+           maxFramesInFlight: maximumInFlight, cpuBuildMeanMS: means.0, gpuMeanMS: means.1,
+           audioIncluded: self.audioInput != nil, rendererBackend: renderer.metrics.backendSummary)
++        if #available(macOS 26.0, *), let modern = modernWriter as? ModernPixelWriter {
++          let metrics = modern.metrics
++          stats.writerMode = usesAsyncReceiver ? "receiver-async" : "receiver-immediate"
++          stats.appendImmediateMeanMS = metrics.0
++          stats.appendSuspendedSeconds = metrics.1
++          stats.appendSuspendedCount = metrics.2
++        }
+         progress(1)
+         completion(.success(stats))
+       }
+     }
+   }
+   private func fail(_ error: Error) {
++    guard DispatchQueue.getSpecific(key: videoQueueKey) == true else {
++      videoQueue.async { [self] in fail(error) }
++      return
++    }
+     lock.lock()
+     if finished {
+       lock.unlock()
+@@ -219,6 +296,7 @@
+     lock.unlock()
+     reader?.cancelReading()
+     writer?.cancelWriting()
++    receiverAppendTask?.cancel()
+     leaveVideo()
+     leaveAudio()
+     if ownsDestination { try? FileManager.default.removeItem(at: destination) }
+@@ -249,16 +327,22 @@
+       fail(writer.error ?? StudioError.message("编码器出错"))
+       return
+     }
+-    while videoInput.isReadyForMoreMediaData, let pixel = ready[appended] {
+-      guard
+-        adaptor.append(
+-          pixel,
+-          withPresentationTime: CMTime(
+-            value: Int64(appended), timescale: Int32(snapshot.settings.fps)))
+-      else {
+-        fail(writer.error ?? StudioError.message("无法写入视频帧"))
+-        return
+-      }
++    while !usesAsyncReceiver && videoInput.isReadyForMoreMediaData, let pixel = ready[appended] {
++      do {
++        let time = CMTime(value: Int64(appended), timescale: Int32(snapshot.settings.fps))
++        let accepted: Bool
++        if #available(macOS 26.0, *), let modern = modernWriter as? ModernPixelWriter {
++          accepted = try modern.appendImmediately(pixel, time: time)
++        } else {
++          accepted = adaptor.append(pixel, withPresentationTime: time)
++        }
++        // A receiver refusal is backpressure, not a failed append.
++        if !accepted {
++          if writer.status == .failed { throw writer.error ?? StudioError.message("无法写入视频帧") }
++          scheduleRetry()
++          break
++        }
++      } catch { fail(error); return }
+       ready.removeValue(forKey: appended)
+       appended += 1
+       inFlight -= 1
+@@ -270,19 +354,54 @@
+     }
+     if appended == frameCount {
+       videoDone = true
+-      videoInput.markAsFinished()
++      if #available(macOS 26.0, *), let modern = modernWriter as? ModernPixelWriter {
++        modern.receiver.finish()
++      } else { videoInput.markAsFinished() }
+       leaveVideo()
+       return
+     }
+-    while videoInput.isReadyForMoreMediaData, inFlight < 3, submitted < frameCount {
++    if usesAsyncReceiver, !receiverAppendPending, let pixel = ready[appended],
++      #available(macOS 26.0, *), let modern = modernWriter as? ModernPixelWriter {
++      receiverAppendPending = true
++      let frame = appended
++      let time = CMTime(value: Int64(frame), timescale: Int32(snapshot.settings.fps))
++      receiverAppendTask = Task { [self, pixel] in
++        do {
++          try Task.checkCancellation()
++          try await modern.append(pixel, time: time)
++          videoQueue.async { [self] in
++            receiverAppendPending = false
++            receiverAppendTask = nil
++            guard !stopped else { return }
++            ready.removeValue(forKey: frame)
++            appended += 1
++            inFlight -= 1
++            let now = ProcessInfo.processInfo.systemUptime
++            if now - lastProgress > 0.1 {
++              progress(Double(appended) / Double(frameCount) * (snapshot.settings.container == .webm ? 0.8 : 0.98))
++              lastProgress = now
++            }
++            pumpVideo()
++          }
++        } catch { videoQueue.async { [self] in fail(error) } }
++      }
++    }
++    while (usesAsyncReceiver || videoInput.isReadyForMoreMediaData), inFlight < 3, submitted < frameCount {
+       var pixel: CVPixelBuffer?
+-      guard let pool = adaptor.pixelBufferPool else {
+-        fail(StudioError.message("编码器未建立像素缓冲池"))
+-        return
+-      }
+-      let status = CVPixelBufferPoolCreatePixelBufferWithAuxAttributes(
+-        kCFAllocatorDefault, pool,
+-        [kCVPixelBufferPoolAllocationThresholdKey as String: 12] as CFDictionary, &pixel)
++      let status: CVReturn
++      if #available(macOS 26.0, *), let modern = modernWriter as? ModernPixelWriter {
++        do { pixel = try modern.allocate(); status = kCVReturnSuccess }
++        catch let error as CVError where error == .wouldExceedAllocationThreshold {
++          status = kCVReturnWouldExceedAllocationThreshold
++        } catch { fail(error); return }
++      } else {
++        guard let pool = adaptor.pixelBufferPool else {
++          fail(StudioError.message("编码器未建立像素缓冲池")); return
++        }
++        status = CVPixelBufferPoolCreatePixelBufferWithAuxAttributes(
++          kCFAllocatorDefault, pool,
++          [kCVPixelBufferPoolAllocationThresholdKey as String: 12] as CFDictionary, &pixel)
++      }
+       if status == kCVReturnWouldExceedAllocationThreshold {
+         if !retryScheduled {
+           retryScheduled = true
+@@ -338,6 +457,14 @@
+       }
+     }
+   }
++  private func scheduleRetry() {
++    guard !retryScheduled else { return }
++    retryScheduled = true
++    videoQueue.asyncAfter(deadline: .now() + 0.002) { [weak self] in
++      self?.retryScheduled = false
++      self?.pumpVideo()
++    }
++  }
+   private func pumpAudio() {
+     if stopped {
+       if !finished { fail(StudioError.message("已取消导出")) }
+--- a/Sources/Models.swift
++++ b/Sources/Models.swift
+@@ -631,6 +631,10 @@
+   var gpuMeanMS: Double
+   var audioIncluded: Bool
+   var rendererBackend: String? = nil
++  var writerMode: String? = nil
++  var appendImmediateMeanMS: Double? = nil
++  var appendSuspendedSeconds: Double? = nil
++  var appendSuspendedCount: Int? = nil
+ }
+ enum StudioError: LocalizedError {
+   case message(String)

@@ -123,7 +123,12 @@ struct MetalPreview: NSViewRepresentable {
       do {
         try renderer.encode(
           target: drawable.texture, time: model.currentTime, slot: index, drawable: drawable
-        ) { [semaphore] _ in semaphore.signal() }
+        ) { [semaphore, weak model] error in
+          semaphore.signal()
+          if let error {
+            DispatchQueue.main.async { model?.pause(); model?.errorMessage = error.localizedDescription }
+          }
+        }
       } catch {
         semaphore.signal()
         DispatchQueue.main.async { model.errorMessage = error.localizedDescription }

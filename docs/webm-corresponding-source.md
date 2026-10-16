@@ -6,7 +6,7 @@
 
 公开下载地址：
 
-https://github.com/Hyperk1ler/LumaScore/releases/download/v2.6.0/LumaScore-v2.6.0-WebMRuntime-source.zip
+https://github.com/Hyperk1ler/LumaScore/releases/download/v2.7.0/LumaScore-v2.7.0-WebMRuntime-source.zip
 
 无需购买或申请访问。该源码包也作为 GitHub Release 的独立资产列出，与应用下载入口并列。发布后应持续保留其可用性；发布改变编码组件的新版应用时，应重新核对和提供对应版本源码。
 
@@ -70,7 +70,7 @@ bash tools/rebuild-webm-runtime.sh --build
 
 ```sh
 python3 native/Tools/package-webm-source.py --download --verify-only
-python3 native/Tools/package-webm-source.py --output outputs/LumaScore-v2.6.0-WebMRuntime-source.zip
+python3 native/Tools/package-webm-source.py --output outputs/LumaScore-v2.7.0-WebMRuntime-source.zip
 ```
 
 下载需要 curl；GitHub Release 源码资产通过 `gh api` 获取，需已配置的 GitHub CLI。离线生成仅使用已验证的缓存，不下载或替换任何版本。组件源码不会被加入 Git 仓库，而是作为独立 Release 下载提供。

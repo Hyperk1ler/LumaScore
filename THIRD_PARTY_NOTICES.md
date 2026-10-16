@@ -12,7 +12,7 @@ Complete bundled license texts, copyright notices and Homebrew recipes are retai
 
 The codec runtime's corresponding source is distributed separately at no charge alongside the application in GitHub Releases:
 
-[LumaScore v2.6.0 WebMRuntime source ZIP](https://github.com/Hyperk1ler/LumaScore/releases/download/v2.6.0/LumaScore-v2.6.0-WebMRuntime-source.zip)
+[LumaScore v2.7.0 WebMRuntime source ZIP](https://github.com/Hyperk1ler/LumaScore/releases/download/v2.7.0/LumaScore-v2.7.0-WebMRuntime-source.zip)
 
 The archive contains all 13 pinned upstream source archives, covering the 20 shipped binaries and two SDL build dependencies, plus original recipes, recorded patches, build configuration, reconstruction/relocation scripts and SHA-256 checksums. Exact versions, source hashes and binary ownership are recorded in `native/Resources/WebMRuntime/source-lock.json`. See [source and rebuild instructions](docs/webm-corresponding-source.md). Keep this source download available while distributing the matching runtime; update the source delivery when changing its binaries.
 

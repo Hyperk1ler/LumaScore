@@ -1,0 +1,278 @@
+--- a/Sources/Exporter.swift
++++ b/Sources/Exporter.swift
+@@ -11,17 +11,23 @@
+   private let videoQueue = DispatchQueue(label: "lumascore.export.video", qos: .userInitiated),
+     audioQueue = DispatchQueue(label: "lumascore.export.audio", qos: .userInitiated)
+   private let lock = NSLock()
+-  private var cancelled = false, finished = false
++  private var cancelled = false, finished = false, prepared = false
+   private var writer: AVAssetWriter!, videoInput: AVAssetWriterInput!,
+     audioInput: AVAssetWriterInput?, adaptor: AVAssetWriterInputPixelBufferAdaptor!,
+     reader: AVAssetReader?, audioOutput: AVAssetReaderTrackOutput?
+   private var intermediateURL: URL?
++  // Accessed only on videoQueue. A canceled transcode must stop before cleanup,
++  // otherwise the child process could recreate the destination after removal.
++  private var transcoding = false, deferredFailure: Error?
+   private let rendererBackend: RendererBackend
+   private var renderer: MetalSceneRenderer!, cache: CVMetalTextureCache?
+   private let group = DispatchGroup()
+   private var videoEntered = false, audioEntered = false
+   private var ready: [Int: CVPixelBuffer] = [:], submitted = 0, appended = 0, inFlight = 0,
+     maximumInFlight = 0, frameCount = 0
++  // GPU slot ownership ends at completion, independently of encoder acceptance.
++  // inFlight still caps GPU work plus completed frames waiting for the writer at 3.
++  private var freeSlots = [0, 1, 2]
+   private var start = 0.0, duration = 0.0, began = 0.0, lastProgress = 0.0, videoDone = false,
+     audioDone = false, retryScheduled = false, ownsDestination = false
+   init(
+@@ -40,7 +46,9 @@
+   func cancel() {
+     lock.lock()
+     cancelled = true
+-    lock.unlock()
++    let shouldWake = prepared && !finished
++    lock.unlock()
++    if shouldWake { videoQueue.async { [weak self] in self?.pumpVideo() } }
+   }
+   private var stopped: Bool {
+     lock.lock()
+@@ -53,6 +61,7 @@
+     }
+   }
+   private func prepare() throws {
++    if stopped { throw StudioError.message("已取消导出") }
+     began = ProcessInfo.processInfo.systemUptime
+     let settings = snapshot.settings
+     try settings.validate()
+@@ -157,57 +166,90 @@
+       throw reader.error ?? StudioError.message("音频读取失败")
+     }
+     lock.lock()
++    if cancelled || finished {
++      lock.unlock()
++      throw StudioError.message("已取消导出")
++    }
+     group.enter()
+     videoEntered = true
+     if audioInput != nil {
+       group.enter()
+       audioEntered = true
+     }
+-    lock.unlock()
+-    videoInput.requestMediaDataWhenReady(on: videoQueue) { [weak self] in self?.pumpVideo() }
+-    if let audioInput = audioInput {
+-      audioInput.requestMediaDataWhenReady(on: audioQueue) { [weak self] in self?.pumpAudio() }
+-    }
+-    group.notify(queue: DispatchQueue.global(qos: .userInitiated)) { [self] in
+-      if stopped { return }
+-      writer.endSession(atSourceTime: CMTime(value: Int64(frameCount), timescale: Int32(fps)))
+-      writer.finishWriting { [self] in
++    prepared = true
++    lock.unlock()
++    videoQueue.async { [self] in
++      if stopped { fail(StudioError.message("已取消导出")); return }
++      videoInput.requestMediaDataWhenReady(on: videoQueue) { [weak self] in self?.pumpVideo() }
++      if let audioInput = audioInput {
++        audioInput.requestMediaDataWhenReady(on: audioQueue) { [weak self] in self?.pumpAudio() }
++      }
++      group.notify(queue: videoQueue) { [self] in finishVideo() }
++      // Prepare frames even while the writer is applying encoder backpressure.
++      pumpVideo()
++    }
++  }
++  private func finishVideo() {
++    if stopped { fail(StudioError.message("已取消导出")); return }
++    writer.endSession(atSourceTime: CMTime(value: Int64(frameCount), timescale: Int32(snapshot.settings.fps)))
++    writer.finishWriting { [self] in
++      videoQueue.async { [self] in
++        if stopped { fail(StudioError.message("已取消导出")); return }
+         guard writer.status == .completed else {
+-          fail(writer.error ?? StudioError.message("视频保存失败"))
+-          return
+-        }
+-        if let intermediate=intermediateURL {
+-          do {
+-            try WebMTranscoder.transcode(input:intermediate,output:destination,cancelled:{self.stopped},progress:{p in self.progress(0.8+p*0.19)},bitrateMbps:settings.bitrate)
+-            try? FileManager.default.removeItem(at:intermediate)
+-          } catch { fail(error);return }
+-        }
+-        lock.lock()
+-        if finished {
+-          lock.unlock()
+-          return
+-        }
+-        finished = true
+-        lock.unlock()
+-        let elapsed = ProcessInfo.processInfo.systemUptime - began
+-        let means = renderer.metrics.means
+-        var usage = rusage()
+-        getrusage(RUSAGE_SELF, &usage)
+-        let bytes =
+-          (try? FileManager.default.attributesOfItem(atPath: destination.path)[.size] as? NSNumber)?
+-          .int64Value ?? 0
+-        let stats = ExportStatistics(
+-          width: width, height: height, fps: fps, frames: frameCount, duration: duration,
+-          elapsed: elapsed, framesPerSecond: Double(frameCount) / elapsed,
+-          realtimeMultiple: duration / elapsed, codec: settings.container == .webm ? "VP9":settings.codec.rawValue,
+-          hardwareRequired: settings.container == .mp4, gpuName: renderer.device.name,
+-          peakResidentMB: Double(usage.ru_maxrss) / 1_048_576, outputBytes: bytes,
+-          maxFramesInFlight: maximumInFlight, cpuBuildMeanMS: means.0, gpuMeanMS: means.1,
+-          audioIncluded: self.audioInput != nil, rendererBackend: renderer.metrics.backendSummary)
+-        progress(1)
+-        completion(.success(stats))
+-      }
+-    }
++          fail(writer.error ?? StudioError.message("视频保存失败")); return
++        }
++        guard let intermediate = intermediateURL else { succeed(); return }
++        transcoding = true
++        DispatchQueue.global(qos: .userInitiated).async { [self] in
++          let result = Result {
++            try WebMTranscoder.transcode(input: intermediate, output: destination,
++              cancelled: { self.stopped }, progress: { p in if !self.stopped { self.progress(0.8 + p * 0.19) } },
++              bitrateMbps: snapshot.settings.bitrate)
++          }
++          videoQueue.async { [self] in
++            transcoding = false
++            if let error = deferredFailure {
++              deferredFailure = nil
++              cleanupFailure(error)
++              return
++            }
++            switch result {
++            case .success:
++              try? FileManager.default.removeItem(at: intermediate)
++              succeed()
++            case .failure(let error): fail(error)
++            }
++          }
++        }
++      }
++    }
++  }
++  private func succeed() {
++    lock.lock()
++    if finished { lock.unlock(); return }
++    if cancelled {
++      lock.unlock()
++      fail(StudioError.message("已取消导出"))
++      return
++    }
++    finished = true
++    lock.unlock()
++    let settings = snapshot.settings, dimensions = settings.dimensions
++    let elapsed = ProcessInfo.processInfo.systemUptime - began
++    let means = renderer.metrics.means
++    var usage = rusage()
++    getrusage(RUSAGE_SELF, &usage)
++    let bytes = (try? FileManager.default.attributesOfItem(atPath: destination.path)[.size] as? NSNumber)?.int64Value ?? 0
++    let stats = ExportStatistics(
++      width: dimensions.0, height: dimensions.1, fps: settings.fps, frames: frameCount, duration: duration,
++      elapsed: elapsed, framesPerSecond: Double(frameCount) / elapsed,
++      realtimeMultiple: duration / elapsed, codec: settings.container == .webm ? "VP9":settings.codec.rawValue,
++      hardwareRequired: settings.container == .mp4, gpuName: renderer.device.name,
++      peakResidentMB: Double(usage.ru_maxrss) / 1_048_576, outputBytes: bytes,
++      maxFramesInFlight: maximumInFlight, cpuBuildMeanMS: means.0, gpuMeanMS: means.1,
++      audioIncluded: audioInput != nil, rendererBackend: renderer.metrics.backendSummary)
++    progress(1)
++    completion(.success(stats))
+   }
+   private func fail(_ error: Error) {
+     lock.lock()
+@@ -217,8 +259,20 @@
+     }
+     finished = true
+     lock.unlock()
+-    reader?.cancelReading()
+-    writer?.cancelWriting()
++    // AVAssetReader cancellation cannot overlap copyNextSampleBuffer; writer
++    // cancellation cannot overlap append on either input. Drain audio first,
++    // then serialize writer cancellation with all video/finalization work.
++    audioQueue.async { [self] in
++      if reader?.status == .reading { reader?.cancelReading() }
++      videoQueue.async { [self] in
++        if writer?.status == .writing { writer?.cancelWriting() }
++        if transcoding { deferredFailure = error; return }
++        cleanupFailure(error)
++      }
++    }
++  }
++  private func cleanupFailure(_ error: Error) {
++    ready.removeAll()
+     leaveVideo()
+     leaveAudio()
+     if ownsDestination { try? FileManager.default.removeItem(at: destination) }
+@@ -241,7 +295,7 @@
+   }
+   private func pumpVideo() {
+     if stopped {
+-      if !finished { fail(StudioError.message("已取消导出")) }
++      fail(StudioError.message("已取消导出"))
+       return
+     }
+     if videoDone { return }
+@@ -250,6 +304,7 @@
+       return
+     }
+     while videoInput.isReadyForMoreMediaData, let pixel = ready[appended] {
++      if stopped { fail(StudioError.message("已取消导出")); return }
+       guard
+         adaptor.append(
+           pixel,
+@@ -274,7 +329,8 @@
+       leaveVideo()
+       return
+     }
+-    while videoInput.isReadyForMoreMediaData, inFlight < 3, submitted < frameCount {
++    while !freeSlots.isEmpty, inFlight < 3, submitted < frameCount {
++      if stopped { fail(StudioError.message("已取消导出")); return }
+       var pixel: CVPixelBuffer?
+       guard let pool = adaptor.pixelBufferPool else {
+         fail(StudioError.message("编码器未建立像素缓冲池"))
+@@ -308,6 +364,7 @@
+         return
+       }
+       let frame = submitted
++      let slot = freeSlots.removeFirst()
+       let localTime = Double(frame) / Double(snapshot.settings.fps)
+       let time = start + localTime
+       let fadeIn = snapshot.settings.screenFadeEnabled && snapshot.settings.fadeIn > 0 ? min(1, localTime / snapshot.settings.fadeIn) : 1
+@@ -319,20 +376,22 @@
+       maximumInFlight = max(maximumInFlight, inFlight)
+       do {
+         try renderer.encode(
+-          target: texture, time: time, slot: frame % 3, fade: Float(max(0, min(fadeIn, fadeOut)))
++          target: texture, time: time, slot: slot, fade: Float(max(0, min(fadeIn, fadeOut)))
+         ) { [self, pixel, cvTexture] error in
+           _ = cvTexture
+           videoQueue.async { [self, pixel] in
++            freeSlots.append(slot)
+             if let error = error {
+               fail(error)
+               return
+             }
+-            if stopped { return }
++            if stopped { pumpVideo(); return }
+             ready[frame] = pixel
+             pumpVideo()
+           }
+         }
+       } catch {
++        freeSlots.append(slot)
+         fail(error)
+         return
+       }
+@@ -340,11 +399,12 @@
+   }
+   private func pumpAudio() {
+     if stopped {
+-      if !finished { fail(StudioError.message("已取消导出")) }
++      fail(StudioError.message("已取消导出"))
+       return
+     }
+     guard let input = audioInput, let output = audioOutput, !audioDone else { return }
+     while input.isReadyForMoreMediaData {
++      if stopped { fail(StudioError.message("已取消导出")); return }
+       guard let sample = output.copyNextSampleBuffer() else {
+         if reader?.status == .failed {
+           fail(reader?.error ?? StudioError.message("音频解码失败"))

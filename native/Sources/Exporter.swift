@@ -16,6 +16,7 @@ final class ExportOperation {
     audioInput: AVAssetWriterInput?, adaptor: AVAssetWriterInputPixelBufferAdaptor!,
     reader: AVAssetReader?, audioOutput: AVAssetReaderTrackOutput?
   private var intermediateURL: URL?
+  private let rendererBackend: RendererBackend
   private var renderer: MetalSceneRenderer!, cache: CVMetalTextureCache?
   private let group = DispatchGroup()
   private var videoEntered = false, audioEntered = false
@@ -26,13 +27,15 @@ final class ExportOperation {
   init(
     snapshot: RenderSnapshot, audioURL: URL?, destination: URL,
     progress: @escaping (Double) -> Void,
-    completion: @escaping (Result<ExportStatistics, Error>) -> Void
+    completion: @escaping (Result<ExportStatistics, Error>) -> Void,
+    rendererBackend: RendererBackend = .automatic
   ) {
     self.snapshot = snapshot
     self.audioURL = audioURL
     self.destination = destination
     self.progress = progress
     self.completion = completion
+    self.rendererBackend = rendererBackend
   }
   func cancel() {
     lock.lock()
@@ -71,7 +74,7 @@ final class ExportOperation {
     guard !FileManager.default.fileExists(atPath: destination.path) else {
       throw StudioError.message("输出文件已存在，请选择新的文件名")
     }
-    renderer = try MetalSceneRenderer(snapshot: snapshot)
+    renderer = try MetalSceneRenderer(snapshot: snapshot, backend: rendererBackend)
     guard
       CVMetalTextureCacheCreate(kCFAllocatorDefault, nil, renderer.device, nil, &cache)
         == kCVReturnSuccess
@@ -200,7 +203,7 @@ final class ExportOperation {
           hardwareRequired: settings.container == .mp4, gpuName: renderer.device.name,
           peakResidentMB: Double(usage.ru_maxrss) / 1_048_576, outputBytes: bytes,
           maxFramesInFlight: maximumInFlight, cpuBuildMeanMS: means.0, gpuMeanMS: means.1,
-          audioIncluded: self.audioInput != nil)
+          audioIncluded: self.audioInput != nil, rendererBackend: renderer.metrics.backendSummary)
         progress(1)
         completion(.success(stats))
       }

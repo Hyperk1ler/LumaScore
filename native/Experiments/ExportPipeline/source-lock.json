@@ -1,0 +1,27 @@
+{
+  "baseVersion": "2.7.0",
+  "baseSourceSHA256": {
+    "Models.swift": "d85cc412ba97478895f03ae8a60de20cb61a346ed09632decb0262cbd83baeb2",
+    "AudioAnalysis.swift": "7c1ca16641a73b80b8bfe9e41eb5b7f09f923c64d5eae7b74658bfedb93e5910",
+    "MIDI.swift": "6b476b558041be07dff03349e74785ccf411d8d758cb958b54b75b5be83d5805",
+    "ChordAnalysis.swift": "7a57e22a04f9adb547e26e451092dd6d53a1e86793eac140666eadbfd58b0362",
+    "Renderer.swift": "b7635f809d99b3bf587b9a8f393d44253e35362dd7932e934f278707ca65ec16",
+    "RendererScenes.swift": "081ca31d1eac9096e4e6837286479200bc68ee28f406e90ebeab3a8eeeb7bcf4",
+    "Exporter.swift": "487ba8c9187a1ab1d73369d75a6f07832a3a00c5aa6a7c514b05a1b1cb246e4b",
+    "WebMTranscoder.swift": "efaa636ccee7f6e8da08a02b109ea401f9d43b65945b2fae3b8286726ba9fa0c",
+    "StudioModel.swift": "49987137ddd636bde49a44f0253e93c3ce0e7ffa6663caaca1ac726fbdcc7223",
+    "FontCatalog.swift": "ee7886631f2e742398d3983da59db0400a208610f85df568f9f837926b29a80b"
+  },
+  "patchSHA256": {
+    "scheduling": "03404146fac05cc99dc98457449eb95fed4fe5cd8a46b04ed5da0f67a15b528e",
+    "nv12": "517f865c28815534dee1186fffd860663aa69a9d38e8205c46374296d2e932c8",
+    "receiver": "d8519c927cb55014b4e6f04f6eff2d25c3a878803dc7effe75f3ef3a2b715efe",
+    "scheduling-reviewed": "47b82590d59b88faa9e6ef0f344f3e99eff7dea71980cfcfbd212c7e17dc2a4e"
+  },
+  "fixtureSHA256": {
+    "representative-5s.mid": "b4b944e9cd6df96483c5b141aecd2e7936227da19205da0fb29aded7235d4f19",
+    "representative-5s.wav": "968719a3d41d820f7510e126ff4beaae3d8a6794d3043345062edf2c53135c1d",
+    "representative-30s.mid": "5c23804d9654ad10b73a115a7616b20c7e569b4df0407d6f6580458e64612aad",
+    "representative-30s.wav": "fe9db32036afe08a6dc605b578b6f35ee9aa42bbeb43490bc7792959cf7056a3"
+  }
+}

@@ -1,0 +1,242 @@
+--- a/Sources/Exporter.swift
++++ b/Sources/Exporter.swift
+@@ -18,6 +18,7 @@
+   private var intermediateURL: URL?
+   private let rendererBackend: RendererBackend
+   private var renderer: MetalSceneRenderer!, cache: CVMetalTextureCache?
++  private var bgraTargets: [MTLTexture] = []
+   private let group = DispatchGroup()
+   private var videoEntered = false, audioEntered = false
+   private var ready: [Int: CVPixelBuffer] = [:], submitted = 0, appended = 0, inFlight = 0,
+@@ -75,6 +76,12 @@
+       throw StudioError.message("输出文件已存在，请选择新的文件名")
+     }
+     renderer = try MetalSceneRenderer(snapshot: snapshot, backend: rendererBackend)
++    let bgra = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
++    bgra.storageMode = .private; bgra.usage = [.renderTarget, .shaderRead]
++    for _ in 0..<3 {
++      guard let texture = renderer.device.makeTexture(descriptor: bgra) else { throw StudioError.message("无法建立 RGB 导出缓冲") }
++      bgraTargets.append(texture)
++    }
+     guard
+       CVMetalTextureCacheCreate(kCFAllocatorDefault, nil, renderer.device, nil, &cache)
+         == kCVReturnSuccess
+@@ -114,7 +121,7 @@
+     adaptor = AVAssetWriterInputPixelBufferAdaptor(
+       assetWriterInput: videoInput,
+       sourcePixelBufferAttributes: [
+-        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
++        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
+         kCVPixelBufferWidthKey as String: width, kCVPixelBufferHeightKey as String: height,
+         kCVPixelBufferMetalCompatibilityKey as String: true,
+         kCVPixelBufferIOSurfacePropertiesKey as String: [:],
+@@ -203,7 +210,7 @@
+           hardwareRequired: settings.container == .mp4, gpuName: renderer.device.name,
+           peakResidentMB: Double(usage.ru_maxrss) / 1_048_576, outputBytes: bytes,
+           maxFramesInFlight: maximumInFlight, cpuBuildMeanMS: means.0, gpuMeanMS: means.1,
+-          audioIncluded: self.audioInput != nil, rendererBackend: renderer.metrics.backendSummary)
++          audioIncluded: self.audioInput != nil, rendererBackend: renderer.metrics.backendSummary, outputPixelFormat: "NV12/BT.709/video-range/center-chroma")
+         progress(1)
+         completion(.success(stats))
+       }
+@@ -297,16 +304,19 @@
+         fail(StudioError.message("无法分配视频帧（\(status)）"))
+         return
+       }
+-      var cvTexture: CVMetalTexture?
+-      guard
+-        CVMetalTextureCacheCreateTextureFromImage(
+-          kCFAllocatorDefault, cache!, pixel, nil, .bgra8Unorm, CVPixelBufferGetWidth(pixel),
+-          CVPixelBufferGetHeight(pixel), 0, &cvTexture) == kCVReturnSuccess,
+-        let cvTexture = cvTexture, let texture = CVMetalTextureGetTexture(cvTexture)
+-      else {
+-        fail(StudioError.message("无法共享 GPU 视频缓冲"))
+-        return
+-      }
++      CVBufferSetAttachment(pixel, kCVImageBufferColorPrimariesKey, kCVImageBufferColorPrimaries_ITU_R_709_2, .shouldPropagate)
++      CVBufferSetAttachment(pixel, kCVImageBufferTransferFunctionKey, kCVImageBufferTransferFunction_ITU_R_709_2, .shouldPropagate)
++      CVBufferSetAttachment(pixel, kCVImageBufferYCbCrMatrixKey, kCVImageBufferYCbCrMatrix_ITU_R_709_2, .shouldPropagate)
++      CVBufferSetAttachment(pixel, kCVImageBufferChromaLocationTopFieldKey, kCVImageBufferChromaLocation_Center, .shouldPropagate)
++      CVBufferSetAttachment(pixel, kCVImageBufferChromaLocationBottomFieldKey, kCVImageBufferChromaLocation_Center, .shouldPropagate)
++      let usage = [kCVMetalTextureUsage as String: MTLTextureUsage.shaderWrite.rawValue] as CFDictionary
++      var cvLuma: CVMetalTexture?, cvChroma: CVMetalTexture?
++      guard CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, cache!, pixel, usage, .r8Unorm,
++          CVPixelBufferGetWidthOfPlane(pixel, 0), CVPixelBufferGetHeightOfPlane(pixel, 0), 0, &cvLuma) == kCVReturnSuccess,
++        CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, cache!, pixel, usage, .rg8Unorm,
++          CVPixelBufferGetWidthOfPlane(pixel, 1), CVPixelBufferGetHeightOfPlane(pixel, 1), 1, &cvChroma) == kCVReturnSuccess,
++        let cvLuma, let cvChroma, let luma = CVMetalTextureGetTexture(cvLuma), let chroma = CVMetalTextureGetTexture(cvChroma)
++      else { fail(StudioError.message("无法共享 GPU NV12 缓冲")); return }
+       let frame = submitted
+       let localTime = Double(frame) / Double(snapshot.settings.fps)
+       let time = start + localTime
+@@ -319,9 +329,9 @@
+       maximumInFlight = max(maximumInFlight, inFlight)
+       do {
+         try renderer.encode(
+-          target: texture, time: time, slot: frame % 3, fade: Float(max(0, min(fadeIn, fadeOut)))
+-        ) { [self, pixel, cvTexture] error in
+-          _ = cvTexture
++          target: bgraTargets[frame % 3], time: time, slot: frame % 3, fade: Float(max(0, min(fadeIn, fadeOut))), nv12: NV12Planes(luma: luma, chroma: chroma)
++        ) { [self, pixel, cvLuma, cvChroma] error in
++          _ = cvLuma; _ = cvChroma
+           videoQueue.async { [self, pixel] in
+             if let error = error {
+               fail(error)
+--- a/Sources/Renderer.swift
++++ b/Sources/Renderer.swift
+@@ -89,7 +89,31 @@
+       if(crt){float scan=0.5+0.5*sin(uv.y*u.viewport.y*3.14159265);c*=1-u.crt.x*scan*0.42;float noise=hashNoise(floor(uv*u.viewport.xy)+floor(time*60)*17)-0.5;c+=noise*u.crt.y*0.3;c*=1+sin(time*47)*u.crt2.x*0.08;c*=1-u.crt2.y*pow(clamp(dot(p,p)*0.5,0.0,1.0),1.4)*0.65;}
+       return float4(clamp(c,0.0,1.0)*u.effects.z,1);
+   }
++  kernel void exportNV12(texture2d<float,access::read> source [[texture(0)]],
++    texture2d<float,access::write> luma [[texture(1)]],
++    texture2d<float,access::write> chroma [[texture(2)]], uint2 gid [[thread_position_in_grid]]) {
++    if (gid.x >= chroma.get_width() || gid.y >= chroma.get_height()) return;
++    uint2 origin=gid*2;
++    float3 mean=0;
++    for (uint y=0;y<2;y++) for (uint x=0;x<2;x++) {
++      uint2 p=origin+uint2(x,y);
++      float3 rgb=source.read(p).rgb;
++      float yy=dot(rgb,float3(0.2126,0.7152,0.0722));
++      luma.write(float4((16.0+219.0*yy)/255.0,0,0,1),p);
++      mean+=rgb*0.25;
++    }
++    float yy=dot(mean,float3(0.2126,0.7152,0.0722));
++    float cb=(mean.b-yy)/(2.0*(1.0-0.0722));
++    float cr=(mean.r-yy)/(2.0*(1.0-0.2126));
++    chroma.write(float4((128.0+224.0*cb)/255.0,(128.0+224.0*cr)/255.0,0,1),gid);
++  }
+   """
++
++/// Optional export-only GPU planes. Their owner retains the CVMetalTexture wrappers
++/// until encode completion, which includes this final conversion dispatch.
++struct NV12Planes {
++  let luma: MTLTexture, chroma: MTLTexture
++}
+ 
+ struct GPUInstance {
+   var rect: SIMD4<Float>
+@@ -140,12 +164,14 @@
+     let residency: MTLResidencySet
+     let sceneArguments: MTL4ArgumentTable
+     let postArguments: MTL4ArgumentTable
++    let conversionArguments: MTL4ArgumentTable
+     var allocations: [MTLAllocation] = []
+   }
+   let device: MTLDevice
+   let queue: MTL4CommandQueue
+   let command: MTL4CommandBuffer
+   let scenePipeline: MTLRenderPipelineState, postPipeline: MTLRenderPipelineState
++  let conversionPipeline: MTLComputePipelineState
+   var frames: [Frame] = []
+ 
+   init(device: MTLDevice, library: MTLLibrary) throws {
+@@ -173,6 +199,9 @@
+     }
+     scenePipeline = try pipeline("sceneVertex", "sceneFragment", blend: true)
+     postPipeline = try pipeline("postVertex", "postFragment")
++    let conversion = MTL4ComputePipelineDescriptor()
++    conversion.computeFunctionDescriptor = function("exportNV12")
++    conversionPipeline = try compiler.makeComputePipelineState(descriptor: conversion, compilerTaskOptions: nil)
+     for index in 0..<3 {
+       guard let allocator = device.makeCommandAllocator() else { throw StudioError.message("无法建立 Metal 4 帧分配器") }
+       let rd = MTLResidencySetDescriptor(); rd.initialCapacity = 16; rd.label = "LumaScore frame \(index)"
+@@ -183,17 +212,18 @@
+         return try device.makeArgumentTable(descriptor: d)
+       }
+       frames.append(Frame(allocator: allocator, residency: residency,
+-        sceneArguments: try table(2, 5), postArguments: try table(1, 2)))
++        sceneArguments: try table(2, 5), postArguments: try table(1, 2), conversionArguments: try table(0, 3)))
+     }
+   }
+ 
+   func encode(renderer: MetalSceneRenderer, target: MTLTexture, scene: MTLTexture, slot: Int,
+-    direct: Bool, began: Double, drawable: CAMetalDrawable?, waitValue: UInt64,
++    direct: Bool, began: Double, drawable: CAMetalDrawable?, waitValue: UInt64, nv12: NV12Planes?,
+     completion: @escaping (Error?) -> Void) throws {
+     let frame = frames[slot]
+     let textures = [renderer.backgroundTexture, renderer.titleTexture, renderer.emojiTexture, renderer.atlas!, renderer.coverTexture]
+     var allocations: [MTLAllocation] = textures + [scene, target, renderer.dummy]
+     allocations += [renderer.buffers[slot], renderer.uniformBuffers[slot]]
++    if let nv12 { allocations += [nv12.luma, nv12.chroma] }
+     // Membership stays bounded even when CVPixelBufferPool rotates render targets.
+     if frame.allocations.count != allocations.count || !zip(frame.allocations, allocations).allSatisfy({ $0.0 === $0.1 }) {
+       frame.residency.removeAllAllocations()
+@@ -243,6 +273,17 @@
+       e.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 6,
+         instanceCount: renderer.instances.count - renderer.overlayStart, baseInstance: renderer.overlayStart)
+       e.endEncoding()
++    }
++    if let nv12 {
++      guard let conversion = command.makeComputeCommandEncoder() else { throw StudioError.message("无法开始 NV12 转换") }
++      conversion.barrier(afterQueueStages: .fragment, beforeStages: .dispatch, visibilityOptions: .device)
++      conversion.setComputePipelineState(conversionPipeline)
++      frame.conversionArguments.setTexture(target.gpuResourceID, index: 0)
++      frame.conversionArguments.setTexture(nv12.luma.gpuResourceID, index: 1)
++      frame.conversionArguments.setTexture(nv12.chroma.gpuResourceID, index: 2)
++      conversion.setArgumentTable(frame.conversionArguments)
++      conversion.dispatchThreads(threadsPerGrid: MTLSize(width: nv12.chroma.width, height: nv12.chroma.height, depth: 1), threadsPerThreadgroup: MTLSize(width: 16, height: 8, depth: 1))
++      conversion.endEncoding()
+     }
+     command.endCommandBuffer()
+     recording = false
+@@ -277,6 +318,7 @@
+   private var hasEmission = false
+   let scenePipeline: MTLRenderPipelineState, postPipeline: MTLRenderPipelineState
+   let glowPipeline: MTLRenderPipelineState, extractPipeline: MTLRenderPipelineState
++  let conversionPipeline: MTLComputePipelineState
+   var buffers: [MTLBuffer] = [], uniformBuffers: [MTLBuffer] = [],
+     intermediates: [MTLTexture?] = [nil, nil, nil]
+   struct BloomTargets {
+@@ -316,6 +358,7 @@
+     referenceRendering = requested == .legacy
+     self.snapshot = snapshot
+     let library = try device.makeLibrary(source: shaderSource, options: nil)
++    conversionPipeline = try device.makeComputePipelineState(function: library.makeFunction(name: "exportNV12")!)
+     let descriptor = MTLRenderPipelineDescriptor()
+     descriptor.vertexFunction = library.makeFunction(name: "sceneVertex")
+     descriptor.fragmentFunction = library.makeFunction(name: "sceneFragment")
+@@ -616,7 +659,7 @@
+ 
+   /// Preview and export share the scene, optional quarter-resolution bloom, and compositing.
+   func encode(
+-    target: MTLTexture, time: Double, slot: Int, fade: Float = 1, drawable: CAMetalDrawable? = nil,
++    target: MTLTexture, time: Double, slot: Int, fade: Float = 1, drawable: CAMetalDrawable? = nil, nv12: NV12Planes? = nil,
+     completion: @escaping (Error?) -> Void
+   ) throws {
+     slotLock.lock()
+@@ -709,7 +752,7 @@
+     }
+     if #available(macOS 26.0, *), selected == .metal4, let modern = modernBackend as? Metal4SceneBackend {
+       try modern.encode(renderer: self, target: target, scene: scene, slot: slot,
+-        direct: direct, began: began, drawable: drawable, waitValue: waitValue,
++        direct: direct, began: began, drawable: drawable, waitValue: waitValue, nv12: nv12,
+         completion: completed)
+       hasSubmitted = true; lastSubmissionBackend = selected; submitted = true
+       return
+@@ -795,6 +838,15 @@
+         overlay.endEncoding()
+       }
+     }
++    if let nv12 {
++      guard let conversion = command.makeComputeCommandEncoder() else { throw StudioError.message("无法开始 NV12 转换") }
++      conversion.setComputePipelineState(conversionPipeline)
++      conversion.setTexture(target, index: 0)
++      conversion.setTexture(nv12.luma, index: 1)
++      conversion.setTexture(nv12.chroma, index: 2)
++      conversion.dispatchThreads(MTLSize(width: nv12.chroma.width, height: nv12.chroma.height, depth: 1), threadsPerThreadgroup: MTLSize(width: 16, height: 8, depth: 1))
++      conversion.endEncoding()
++    }
+     if let drawable = drawable { command.present(drawable) }
+     let cpu = ProcessInfo.processInfo.systemUptime - began
+     command.addCompletedHandler { [metrics] result in
+--- a/Sources/Models.swift
++++ b/Sources/Models.swift
+@@ -631,6 +631,7 @@
+   var gpuMeanMS: Double
+   var audioIncluded: Bool
+   var rendererBackend: String? = nil
++  var outputPixelFormat: String? = nil
+ }
+ enum StudioError: LocalizedError {
+   case message(String)

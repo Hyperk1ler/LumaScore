@@ -1,0 +1,184 @@
+--- a/Sources/Exporter.swift
++++ b/Sources/Exporter.swift
+@@ -22,6 +22,12 @@
+   private var videoEntered = false, audioEntered = false
+   private var ready: [Int: CVPixelBuffer] = [:], submitted = 0, appended = 0, inFlight = 0,
+     maximumInFlight = 0, frameCount = 0
++  // Pending includes GPU work and completed frames waiting for the encoder. GPU
++  // slot ownership is separate: a slot is reusable as soon as its GPU work ends.
++  private var freeSlots = [0, 1, 2], pendingLimit = 6, poolLimit = 15
++  private var maximumReady = 0, poolRetries = 0, writerBlockedSeconds = 0.0,
++    gpuSlotSeconds = 0.0, observedSeconds = 0.0, appendSeconds = 0.0,
++    lastObservation = 0.0, previousBusySlots = 0, previousWriterBlocked = false
+   private var start = 0.0, duration = 0.0, began = 0.0, lastProgress = 0.0, videoDone = false,
+     audioDone = false, retryScheduled = false, ownsDestination = false
+   init(
+@@ -40,7 +46,9 @@
+   func cancel() {
+     lock.lock()
+     cancelled = true
++    let videoStarted = videoEntered
+     lock.unlock()
++    if videoStarted { videoQueue.async { [weak self] in self?.pumpVideo() } }
+   }
+   private var stopped: Bool {
+     lock.lock()
+@@ -53,11 +61,17 @@
+     }
+   }
+   private func prepare() throws {
++    if stopped { throw StudioError.message("已取消导出") }
+     began = ProcessInfo.processInfo.systemUptime
+     let settings = snapshot.settings
+     try settings.validate()
+     let (width, height) = settings.dimensions
+     let fps = settings.fps
++    let requestedLimit = Int(ProcessInfo.processInfo.environment["LUMASCORE_EXPORT_PREFETCH"] ?? "6") ?? 6
++    let requestedBudget = Int(ProcessInfo.processInfo.environment["LUMASCORE_EXPORT_PREFETCH_MB"] ?? "96") ?? 96
++    let budgetFrames = max(24, min(512, requestedBudget)) * 1_048_576 / max(1, width * height * 4)
++    pendingLimit = max(3, min(24, requestedLimit, budgetFrames))
++    poolLimit = pendingLimit + 9
+     guard width > 0, height > 0, [30, 60].contains(fps) else {
+       throw StudioError.message("导出尺寸或帧率不正确")
+     }
+@@ -157,6 +171,10 @@
+       throw reader.error ?? StudioError.message("音频读取失败")
+     }
+     lock.lock()
++    if cancelled || finished {
++      lock.unlock()
++      throw StudioError.message("已取消导出")
++    }
+     group.enter()
+     videoEntered = true
+     if audioInput != nil {
+@@ -165,6 +183,8 @@
+     }
+     lock.unlock()
+     videoInput.requestMediaDataWhenReady(on: videoQueue) { [weak self] in self?.pumpVideo() }
++    // Rendering starts independently of the writer's readiness notification.
++    videoQueue.async { [weak self] in self?.pumpVideo() }
+     if let audioInput = audioInput {
+       audioInput.requestMediaDataWhenReady(on: audioQueue) { [weak self] in self?.pumpAudio() }
+     }
+@@ -203,7 +223,11 @@
+           hardwareRequired: settings.container == .mp4, gpuName: renderer.device.name,
+           peakResidentMB: Double(usage.ru_maxrss) / 1_048_576, outputBytes: bytes,
+           maxFramesInFlight: maximumInFlight, cpuBuildMeanMS: means.0, gpuMeanMS: means.1,
+-          audioIncluded: self.audioInput != nil, rendererBackend: renderer.metrics.backendSummary)
++          audioIncluded: self.audioInput != nil, rendererBackend: renderer.metrics.backendSummary,
++          schedulingDiagnostics: ["pendingLimit": Double(pendingLimit),
++            "maximumReady": Double(maximumReady), "poolRetries": Double(poolRetries),
++            "writerBlockedSeconds": writerBlockedSeconds, "appendSeconds": appendSeconds,
++            "observedSeconds": observedSeconds, "gpuSlotSeconds": gpuSlotSeconds])
+         progress(1)
+         completion(.success(stats))
+       }
+@@ -240,6 +264,8 @@
+     if entered { group.leave() }
+   }
+   private func pumpVideo() {
++    observeScheduling()
++    defer { observeScheduling() }
+     if stopped {
+       if !finished { fail(StudioError.message("已取消导出")) }
+       return
+@@ -250,6 +276,7 @@
+       return
+     }
+     while videoInput.isReadyForMoreMediaData, let pixel = ready[appended] {
++      let appendBegan = ProcessInfo.processInfo.systemUptime
+       guard
+         adaptor.append(
+           pixel,
+@@ -259,6 +286,7 @@
+         fail(writer.error ?? StudioError.message("无法写入视频帧"))
+         return
+       }
++      appendSeconds += ProcessInfo.processInfo.systemUptime - appendBegan
+       ready.removeValue(forKey: appended)
+       appended += 1
+       inFlight -= 1
+@@ -274,7 +302,7 @@
+       leaveVideo()
+       return
+     }
+-    while videoInput.isReadyForMoreMediaData, inFlight < 3, submitted < frameCount {
++    while !freeSlots.isEmpty, inFlight < pendingLimit, submitted < frameCount {
+       var pixel: CVPixelBuffer?
+       guard let pool = adaptor.pixelBufferPool else {
+         fail(StudioError.message("编码器未建立像素缓冲池"))
+@@ -282,8 +310,9 @@
+       }
+       let status = CVPixelBufferPoolCreatePixelBufferWithAuxAttributes(
+         kCFAllocatorDefault, pool,
+-        [kCVPixelBufferPoolAllocationThresholdKey as String: 12] as CFDictionary, &pixel)
++        [kCVPixelBufferPoolAllocationThresholdKey as String: poolLimit] as CFDictionary, &pixel)
+       if status == kCVReturnWouldExceedAllocationThreshold {
++        poolRetries += 1
+         if !retryScheduled {
+           retryScheduled = true
+           videoQueue.asyncAfter(deadline: .now() + 0.002) { [weak self] in
+@@ -308,6 +337,7 @@
+         return
+       }
+       let frame = submitted
++      let slot = freeSlots.removeFirst()
+       let localTime = Double(frame) / Double(snapshot.settings.fps)
+       let time = start + localTime
+       let fadeIn = snapshot.settings.screenFadeEnabled && snapshot.settings.fadeIn > 0 ? min(1, localTime / snapshot.settings.fadeIn) : 1
+@@ -319,24 +349,42 @@
+       maximumInFlight = max(maximumInFlight, inFlight)
+       do {
+         try renderer.encode(
+-          target: texture, time: time, slot: frame % 3, fade: Float(max(0, min(fadeIn, fadeOut)))
++          target: texture, time: time, slot: slot, fade: Float(max(0, min(fadeIn, fadeOut)))
+         ) { [self, pixel, cvTexture] error in
+           _ = cvTexture
+           videoQueue.async { [self, pixel] in
++            observeScheduling()
++            freeSlots.append(slot)
+             if let error = error {
+               fail(error)
+               return
+             }
+-            if stopped { return }
++            if stopped { pumpVideo(); return }
+             ready[frame] = pixel
++            maximumReady = max(maximumReady, ready.count)
+             pumpVideo()
+           }
+         }
+       } catch {
++        freeSlots.append(slot)
+         fail(error)
+         return
+       }
+     }
++  }
++  // These are queue-observed scheduling intervals, not driver GPU timestamps.
++  // RendererMetrics separately measures GPU execution time.
++  private func observeScheduling() {
++    let now = ProcessInfo.processInfo.systemUptime
++    if lastObservation > 0 {
++      let elapsed = now - lastObservation
++      observedSeconds += elapsed
++      gpuSlotSeconds += elapsed * Double(previousBusySlots)
++      if previousWriterBlocked { writerBlockedSeconds += elapsed }
++    }
++    lastObservation = now
++    previousBusySlots = 3 - freeSlots.count
++    previousWriterBlocked = videoInput != nil && !videoInput.isReadyForMoreMediaData && !videoDone
+   }
+   private func pumpAudio() {
+     if stopped {
+--- a/Sources/Models.swift
++++ b/Sources/Models.swift
+@@ -631,6 +631,7 @@
+   var gpuMeanMS: Double
+   var audioIncluded: Bool
+   var rendererBackend: String? = nil
++  var schedulingDiagnostics: [String: Double]? = nil
+ }
+ enum StudioError: LocalizedError {
+   case message(String)

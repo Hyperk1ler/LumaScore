@@ -48,7 +48,7 @@ struct LumaScoreApp: App {
         CommandGroup(replacing: .help) {
           Button("关于 LumaScore / About") {
             let alert = NSAlert()
-            alert.messageText = "LumaScore \(Bundle.main.object(forInfoDictionaryKey:"CFBundleShortVersionString") as? String ?? "2.6.0")"
+            alert.messageText = "LumaScore \(Bundle.main.object(forInfoDictionaryKey:"CFBundleShortVersionString") as? String ?? "2.7.0")"
             alert.informativeText =
               "SwiftUI + Metal + AVFoundation 视觉工作室。\nMIDI、音频频谱和混合场景；媒体在本机处理。\n本地字体、GPU 特效和视频导出。"
             alert.runModal()
@@ -127,7 +127,7 @@ enum NativeCLI {
         completion: { r in
           result = r
           semaphore.signal()
-        })
+        }, rendererBackend: RendererBackend(rawValue: option("--renderer") ?? "automatic") ?? .automatic)
       operation.startExport()
       if let delay = option("--cancel-after").flatMap(Double.init) {
         DispatchQueue.global().asyncAfter(deadline: .now() + delay) { operation.cancel() }

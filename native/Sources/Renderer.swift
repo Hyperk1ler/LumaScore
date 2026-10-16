@@ -109,11 +109,13 @@ struct GPUUniforms {
 final class RendererMetrics {
   let lock = NSLock()
   var build = 0.0, gpu = 0.0, count = 0
-  func record(cpu: Double, gpuTime: Double) {
+  private var usedBackends: Set<RendererBackend> = []
+  func record(cpu: Double, gpuTime: Double, backend: RendererBackend = .legacy) {
     lock.lock()
     build += cpu
     gpu += gpuTime
     count += 1
+    usedBackends.insert(backend)
     lock.unlock()
   }
   var means: (Double, Double) {
@@ -121,21 +123,169 @@ final class RendererMetrics {
     defer { lock.unlock() }
     return count == 0 ? (0, 0) : (build / Double(count) * 1000, gpu / Double(count) * 1000)
   }
+  var backendSummary: String {
+    lock.lock(); defer { lock.unlock() }
+    return usedBackends.map { $0.rawValue }.sorted().joined(separator: "+")
+  }
+}
+
+enum RendererBackend: String { case automatic, legacy, metal4 }
+
+/// Metal 4 does not track hazards or retain resources. Each slot owns its allocator,
+/// bindings and residency until its completion callback releases the caller's slot.
+@available(macOS 26.0, *)
+private final class Metal4SceneBackend {
+  struct Frame {
+    let allocator: MTL4CommandAllocator
+    let residency: MTLResidencySet
+    let sceneArguments: MTL4ArgumentTable
+    let postArguments: MTL4ArgumentTable
+    var allocations: [MTLAllocation] = []
+  }
+  let device: MTLDevice
+  let queue: MTL4CommandQueue
+  let command: MTL4CommandBuffer
+  let scenePipeline: MTLRenderPipelineState, postPipeline: MTLRenderPipelineState
+  var frames: [Frame] = []
+
+  init(device: MTLDevice, library: MTLLibrary) throws {
+    self.device = device
+    guard let queue = device.makeMTL4CommandQueue(), let command = device.makeCommandBuffer() else {
+      throw StudioError.message("无法建立 Metal 4 队列")
+    }
+    self.queue = queue; self.command = command
+    let compiler = try device.makeCompiler(descriptor: MTL4CompilerDescriptor())
+    func function(_ name: String) -> MTL4LibraryFunctionDescriptor {
+      let f = MTL4LibraryFunctionDescriptor(); f.library = library; f.name = name; return f
+    }
+    func pipeline(_ vertex: String, _ fragment: String, blend: Bool = false) throws -> MTLRenderPipelineState {
+      let d = MTL4RenderPipelineDescriptor()
+      d.label = "LumaScore \(fragment)"
+      d.vertexFunctionDescriptor = function(vertex); d.fragmentFunctionDescriptor = function(fragment)
+      d.colorAttachments[0].pixelFormat = .bgra8Unorm
+      if blend {
+        let a = d.colorAttachments[0]!
+        a.blendingState = .enabled
+        a.sourceRGBBlendFactor = .one; a.sourceAlphaBlendFactor = .one
+        a.destinationRGBBlendFactor = .oneMinusSourceAlpha; a.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+      }
+      return try compiler.makeRenderPipelineState(descriptor: d, compilerTaskOptions: nil)
+    }
+    scenePipeline = try pipeline("sceneVertex", "sceneFragment", blend: true)
+    postPipeline = try pipeline("postVertex", "postFragment")
+    for index in 0..<3 {
+      guard let allocator = device.makeCommandAllocator() else { throw StudioError.message("无法建立 Metal 4 帧分配器") }
+      let rd = MTLResidencySetDescriptor(); rd.initialCapacity = 16; rd.label = "LumaScore frame \(index)"
+      let residency = try device.makeResidencySet(descriptor: rd)
+      func table(_ buffers: Int, _ textures: Int) throws -> MTL4ArgumentTable {
+        let d = MTL4ArgumentTableDescriptor(); d.maxBufferBindCount = buffers; d.maxTextureBindCount = textures
+        d.initializeBindings = true
+        return try device.makeArgumentTable(descriptor: d)
+      }
+      frames.append(Frame(allocator: allocator, residency: residency,
+        sceneArguments: try table(2, 5), postArguments: try table(1, 2)))
+    }
+  }
+
+  func encode(renderer: MetalSceneRenderer, target: MTLTexture, scene: MTLTexture, slot: Int,
+    direct: Bool, began: Double, drawable: CAMetalDrawable?, waitValue: UInt64,
+    completion: @escaping (Error?) -> Void) throws {
+    let frame = frames[slot]
+    let textures = [renderer.backgroundTexture, renderer.titleTexture, renderer.emojiTexture, renderer.atlas!, renderer.coverTexture]
+    var allocations: [MTLAllocation] = textures + [scene, target, renderer.dummy]
+    allocations += [renderer.buffers[slot], renderer.uniformBuffers[slot]]
+    // Membership stays bounded even when CVPixelBufferPool rotates render targets.
+    if frame.allocations.count != allocations.count || !zip(frame.allocations, allocations).allSatisfy({ $0.0 === $0.1 }) {
+      frame.residency.removeAllAllocations()
+      for resource in allocations { frame.residency.addAllocation(resource) }
+      frame.residency.commit()
+      frames[slot].allocations = allocations
+    }
+    frame.allocator.reset()
+    command.beginCommandBuffer(allocator: frame.allocator)
+    command.useResidencySet(frame.residency)
+    // Always close an abandoned buffer too; no allocator remains in recording state.
+    var recording = true
+    defer { if recording { command.endCommandBuffer() } }
+    let sceneArgs = frame.sceneArguments
+    sceneArgs.setAddress(renderer.buffers[slot].gpuAddress, index: 0)
+    sceneArgs.setAddress(renderer.uniformBuffers[slot].gpuAddress, index: 1)
+    for (i, texture) in textures.enumerated() { sceneArgs.setTexture(texture.gpuResourceID, index: i) }
+    func pass(_ texture: MTLTexture, load: MTLLoadAction = .dontCare) -> MTL4RenderPassDescriptor {
+      let p = MTL4RenderPassDescriptor(); p.colorAttachments[0].texture = texture
+      p.colorAttachments[0].loadAction = load; p.colorAttachments[0].storeAction = .store
+      return p
+    }
+    let p = pass(scene, load: .clear), bg = renderer.snapshot.settings.background
+    p.colorAttachments[0].clearColor = MTLClearColorMake(Double(bg.r), Double(bg.g), Double(bg.b), 1)
+    guard let encoder = command.makeRenderCommandEncoder(descriptor: p) else { throw StudioError.message("无法开始 Metal 4 场景") }
+    encoder.setRenderPipelineState(scenePipeline)
+    encoder.setArgumentTable(sceneArgs, stages: [.vertex, .fragment])
+    if renderer.overlayStart > 0 { encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: renderer.overlayStart) }
+    encoder.endEncoding()
+    func fullscreen(_ output: MTLTexture, pipeline: MTLRenderPipelineState, args: MTL4ArgumentTable) throws {
+      guard let e = command.makeRenderCommandEncoder(descriptor: pass(output)) else { throw StudioError.message("无法开始 Metal 4 合成") }
+      // Metal 4 resources are untracked: make producer attachment writes visible to sampling.
+      e.barrier(afterQueueStages: .fragment, beforeStages: .fragment, visibilityOptions: .device)
+      e.setRenderPipelineState(pipeline); e.setArgumentTable(args, stages: .fragment)
+      e.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 3); e.endEncoding()
+    }
+    if !direct {
+      frame.postArguments.setTexture(scene.gpuResourceID, index: 0)
+      frame.postArguments.setTexture(renderer.dummy.gpuResourceID, index: 1)
+      frame.postArguments.setAddress(renderer.uniformBuffers[slot].gpuAddress, index: 0)
+      try fullscreen(target, pipeline: postPipeline, args: frame.postArguments)
+    }
+    if renderer.instances.count > renderer.overlayStart {
+      guard let e = command.makeRenderCommandEncoder(descriptor: pass(target, load: .load)) else { throw StudioError.message("无法开始 Metal 4 叠加") }
+      e.barrier(afterQueueStages: .fragment, beforeStages: .fragment, visibilityOptions: .device)
+      e.setRenderPipelineState(scenePipeline); e.setArgumentTable(sceneArgs, stages: [.vertex, .fragment])
+      e.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 6,
+        instanceCount: renderer.instances.count - renderer.overlayStart, baseInstance: renderer.overlayStart)
+      e.endEncoding()
+    }
+    command.endCommandBuffer()
+    recording = false
+    let cpu = ProcessInfo.processInfo.systemUptime - began
+    let options = MTL4CommitOptions()
+    options.addFeedbackHandler { [metrics = renderer.metrics, frame, allocations] feedback in
+      withExtendedLifetime((frame, allocations)) {
+        metrics.record(cpu: cpu, gpuTime: max(0, feedback.gpuEndTime - feedback.gpuStartTime), backend: .metal4)
+        completion(feedback.error)
+      }
+    }
+    if let drawable { queue.waitForDrawable(drawable) }
+    if waitValue > 0, let event = renderer.submissionEvent { queue.waitForEvent(event, value: waitValue) }
+    queue.commit([command], options: options)
+    if let drawable { queue.signalDrawable(drawable); drawable.present() }
+  }
 }
 
 final class MetalSceneRenderer {
   let device: MTLDevice
   let queue: MTLCommandQueue
   let metrics = RendererMetrics()
+  private var modernBackend: AnyObject?
+  private(set) var backend: RendererBackend = .legacy
+  fileprivate let submissionEvent: MTLEvent?
+  private var transitionValue: UInt64 = 0
+  private var hasSubmitted = false
+  private var lastSubmissionBackend: RendererBackend = .legacy
+  private let referenceRendering: Bool
+  private let slotLock = NSLock()
+  private var busySlots = [false, false, false]
+  private var hasEmission = false
   let scenePipeline: MTLRenderPipelineState, postPipeline: MTLRenderPipelineState
   let glowPipeline: MTLRenderPipelineState, extractPipeline: MTLRenderPipelineState
   var buffers: [MTLBuffer] = [], uniformBuffers: [MTLBuffer] = [],
     intermediates: [MTLTexture?] = [nil, nil, nil]
   struct BloomTargets {
     let emission: MTLTexture, input: MTLTexture, blurred: MTLTexture
-    let blur: MPSImageGaussianBlur
-    let radius: Float
+    var blur: MPSImageGaussianBlur
+    var radius: Float
   }
+  private var cachedBlur: MPSImageGaussianBlur?
+  private var cachedBlurRadius: Float = -1
   var bloomTargets: [BloomTargets?] = [nil, nil, nil]
   let capacity = 65536
   var instances: [GPUInstance] = []
@@ -156,12 +306,14 @@ final class MetalSceneRenderer {
   let dummy: MTLTexture
   var titleDimensions = SIMD2<Float>(0, 0)
   var loadedBackground: URL?, loadedEmoji = ""
-  init(snapshot: RenderSnapshot) throws {
+  init(snapshot: RenderSnapshot, backend requested: RendererBackend = .automatic) throws {
     guard let device = MTLCreateSystemDefaultDevice(), let queue = device.makeCommandQueue() else {
       throw StudioError.message("此 Mac 无法使用 Metal 渲染")
     }
     self.device = device
     self.queue = queue
+    submissionEvent = device.makeEvent()
+    referenceRendering = requested == .legacy
     self.snapshot = snapshot
     let library = try device.makeLibrary(source: shaderSource, options: nil)
     let descriptor = MTLRenderPipelineDescriptor()
@@ -217,6 +369,17 @@ final class MetalSceneRenderer {
     }
     instances.reserveCapacity(8192)
     try update(snapshot, rebuild: true)
+    if requested != .legacy, submissionEvent != nil, #available(macOS 26.0, *), device.supportsFamily(.metal4) {
+      do {
+        modernBackend = try Metal4SceneBackend(device: device, library: library)
+        backend = .metal4
+      } catch {
+        if requested == .metal4 { throw error }
+        // Unsupported devices and pipeline creation failures retain the existing renderer.
+      }
+    } else if requested == .metal4 {
+      throw StudioError.message("Metal 4 需要 macOS 26 和兼容的 Apple GPU")
+    }
   }
   func update(_ value: RenderSnapshot, rebuild: Bool = false) throws {
     let ids=value.tracks.map{$0.id}
@@ -288,6 +451,13 @@ final class MetalSceneRenderer {
     radius: Float = 2, glow: Float = 0, aux: Float = 0, uv: SIMD2<Float> = SIMD2(1, 1)
   ) {
     guard instances.count < capacity else { return }
+    if color.w > 0 {
+      switch Int(kind + 0.1) {
+      case 6, 8, 12, 15, 16: break
+      case 7: hasEmission = hasEmission || aux > 0.5
+      default: hasEmission = hasEmission || glow > 0
+      }
+    }
     let pad = glow > 0 ? Float(14) : 0
     instances.append(
       GPUInstance(
@@ -301,6 +471,7 @@ final class MetalSceneRenderer {
   }
   func build(time: Double, width: Float, height: Float) {
     instances.removeAll(keepingCapacity: true)
+    hasEmission = false
     if atlasY > 3000 || textCache.count > 1800 { resetAtlas() }
     let settings = snapshot.settings
     let scale = height / 720
@@ -448,10 +619,27 @@ final class MetalSceneRenderer {
     target: MTLTexture, time: Double, slot: Int, fade: Float = 1, drawable: CAMetalDrawable? = nil,
     completion: @escaping (Error?) -> Void
   ) throws {
+    slotLock.lock()
+    guard busySlots.indices.contains(slot), !busySlots[slot] else {
+      slotLock.unlock(); throw StudioError.message("GPU 帧缓冲尚未释放")
+    }
+    busySlots[slot] = true; slotLock.unlock()
+    var submitted = false
+    func releaseSlot() { slotLock.lock(); busySlots[slot] = false; slotLock.unlock() }
+    defer { if !submitted { releaseSlot() } }
+    let completed: (Error?) -> Void = { error in releaseSlot(); completion(error) }
     let began = ProcessInfo.processInfo.systemUptime
     let width = target.width
     let height = target.height
     build(time: time, width: Float(width), height: Float(height))
+    let settings = snapshot.settings
+    // No emission means the bloom texture is identically black. Keep the reference
+    // backend's original passes for pixel and performance comparisons.
+    let canEmitLater = (settings.scene != .audio && !snapshot.tracks.isEmpty) || (settings.particles > 0 && settings.particleAmount > 0)
+    // Prewarm each slot before a delayed first note/particle can arrive. Skipping
+    // blank frames must not move MPS allocation/compilation onto that first beat.
+    let warmBloom = canEmitLater && (bloomTargets[slot]?.emission.width != width || bloomTargets[slot]?.emission.height != height)
+    let glowEnabled = settings.bloomEnabled && settings.glow > 0 && (referenceRendering || hasEmission || warmBloom)
     let buffer = buffers[slot]
     for i in overlayStart..<instances.count { instances[i].color.w *= fade }
     instances.withUnsafeBytes { raw in
@@ -459,15 +647,13 @@ final class MetalSceneRenderer {
     }
     var uniform = GPUUniforms(
       viewport: SIMD4(Float(width), Float(height), Float(time), 1),
-      effects: SIMD4(Float(snapshot.settings.fisheye), snapshot.settings.bloomEnabled ? Float(snapshot.settings.glow):0, fade, snapshot.settings.lensMode == .pincushion ? 1:-1),
+      effects: SIMD4(Float(snapshot.settings.fisheye), glowEnabled ? Float(snapshot.settings.glow):0, fade, snapshot.settings.lensMode == .pincushion ? 1:-1),
       crt: SIMD4(Float(snapshot.settings.crtScanlines),Float(snapshot.settings.crtNoise),Float(snapshot.settings.crtJitter),Float(snapshot.settings.crtChromatic)),
       crt2: SIMD4(Float(snapshot.settings.crtFlicker),Float(snapshot.settings.crtVignette),snapshot.settings.crtEnabled ? 1:0,Float(snapshot.settings.intro)),
       grade: SIMD4(Float(snapshot.settings.brightness),Float(snapshot.settings.contrast),Float(snapshot.settings.saturation),Float(snapshot.settings.hue * .pi/180)),
       grade2: SIMD4(Float(snapshot.settings.sepia),snapshot.settings.colorFilterEnabled ? 1:0,0,0),
       camera: cameraReaction(time:time))
     memcpy(uniformBuffers[slot].contents(), &uniform, MemoryLayout<GPUUniforms>.stride)
-    let settings=snapshot.settings
-    let glowEnabled=settings.bloomEnabled && settings.glow > 0
     let graded=settings.colorFilterEnabled && (settings.brightness != 0 || settings.contrast != 1 || settings.saturation != 1 || settings.hue != 0 || settings.sepia != 0)
     let direct = !glowEnabled && !graded && !settings.crtEnabled && settings.fisheye == 0 && settings.cameraShake == 0 && settings.cameraPunch == 0 && fade == 1
     if !direct && (intermediates[slot]?.width != width || intermediates[slot]?.height != height) {
@@ -479,8 +665,13 @@ final class MetalSceneRenderer {
     }
     if glowEnabled {
       let radius = Float(snapshot.settings.glowRadius) * Float(height) / 720 / 4
+      if cachedBlurRadius != radius {
+        let blur = MPSImageGaussianBlur(device: device, sigma: max(0.5, radius))
+        blur.edgeMode = .clamp
+        cachedBlur = blur; cachedBlurRadius = radius
+      }
       if bloomTargets[slot]?.emission.width != width
-        || bloomTargets[slot]?.emission.height != height || bloomTargets[slot]?.radius != radius
+        || bloomTargets[slot]?.emission.height != height
       {
         func texture(_ w: Int, _ h: Int) -> MTLTexture? {
           let d = MTLTextureDescriptor.texture2DDescriptor(
@@ -493,15 +684,40 @@ final class MetalSceneRenderer {
           let input = texture(max(1, width / 4), max(1, height / 4)),
           let blurred = texture(max(1, width / 4), max(1, height / 4))
         else { throw StudioError.message("无法分配光晕缓冲") }
-        let blur = MPSImageGaussianBlur(device: device, sigma: max(0.5, radius))
-        blur.edgeMode = .clamp
         bloomTargets[slot] = BloomTargets(
-          emission: emission, input: input, blurred: blurred, blur: blur, radius: radius)
+          emission: emission, input: input, blurred: blurred, blur: cachedBlur!, radius: radius)
+      } else if bloomTargets[slot]?.radius != radius {
+        bloomTargets[slot]?.blur = cachedBlur!; bloomTargets[slot]?.radius = radius
       }
     }
-    guard let scene = direct ? target:intermediates[slot], let command = queue.makeCommandBuffer() else {
+    guard let scene = direct ? target:intermediates[slot] else {
+      throw StudioError.message("无法分配场景缓冲")
+    }
+    let selected: RendererBackend = backend == .metal4 && !glowEnabled ? .metal4 : .legacy
+    var waitValue: UInt64 = 0
+    if hasSubmitted, selected != lastSubmissionBackend, let event = submissionEvent {
+      transitionValue += 1; waitValue = transitionValue
+      // A signal every frame serializes GPU execution and defeats triple buffering.
+      // Only hand off ownership when crossing queues; steady-state frames overlap.
+      if #available(macOS 26.0, *), lastSubmissionBackend == .metal4,
+        let modern = modernBackend as? Metal4SceneBackend {
+        modern.queue.signalEvent(event, value: waitValue)
+      } else {
+        guard let handoff = queue.makeCommandBuffer() else { throw StudioError.message("无法同步 GPU 队列") }
+        handoff.encodeSignalEvent(event, value: waitValue); handoff.commit()
+      }
+    }
+    if #available(macOS 26.0, *), selected == .metal4, let modern = modernBackend as? Metal4SceneBackend {
+      try modern.encode(renderer: self, target: target, scene: scene, slot: slot,
+        direct: direct, began: began, drawable: drawable, waitValue: waitValue,
+        completion: completed)
+      hasSubmitted = true; lastSubmissionBackend = selected; submitted = true
+      return
+    }
+    guard let command = queue.makeCommandBuffer() else {
       throw StudioError.message("无法提交 GPU 帧")
     }
+    if waitValue > 0, let event = submissionEvent { command.encodeWaitForEvent(event, value: waitValue) }
     let pass = MTLRenderPassDescriptor()
     pass.colorAttachments[0].texture = scene
     let bg = snapshot.settings.background
@@ -581,10 +797,11 @@ final class MetalSceneRenderer {
     }
     if let drawable = drawable { command.present(drawable) }
     let cpu = ProcessInfo.processInfo.systemUptime - began
-    command.addCompletedHandler { [metrics] completed in
-      metrics.record(cpu: cpu, gpuTime: max(0, completed.gpuEndTime - completed.gpuStartTime))
-      completion(completed.error)
+    command.addCompletedHandler { [metrics] result in
+      metrics.record(cpu: cpu, gpuTime: max(0, result.gpuEndTime - result.gpuStartTime))
+      completed(result.error)
     }
     command.commit()
+    hasSubmitted = true; lastSubmissionBackend = selected; submitted = true
   }
 }
